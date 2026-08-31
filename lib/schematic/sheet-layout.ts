@@ -1,5 +1,6 @@
 import type { AltiumRecord, AltiumSchDoc } from "altiumts"
 import type { AnyCircuitElement, Point, SchematicRect } from "circuit-json"
+import { matchesComponentPartAndDisplayMode } from "./record-visibility"
 
 export const SCHEMATIC_SHEET_ID = "schematic_sheet_altium"
 
@@ -135,13 +136,11 @@ export function shouldRenderSchematicRecord(
     }
 
     if (parent.recordKind === "1") {
-      const currentPartId = parent.getNumber("CURRENTPARTID") ?? 1
-      return (
-        (ownerPartId === undefined ||
-          ownerPartId <= 0 ||
-          ownerPartId === currentPartId) &&
-        (ownerPartDisplayMode === undefined || ownerPartDisplayMode === 0)
-      )
+      return matchesComponentPartAndDisplayMode({
+        component: parent,
+        ownerPartDisplayMode,
+        ownerPartId,
+      })
     }
     current = parent
   }

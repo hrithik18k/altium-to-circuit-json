@@ -42,6 +42,7 @@ import {
   scalePoint,
   subtractPoints,
 } from "./geometry"
+import { matchesComponentPartAndDisplayMode } from "./record-visibility"
 import {
   isGroundNet,
   isPowerNet,
@@ -195,9 +196,12 @@ function convertComponents(params: {
     const ownedRecords = documentIndex.getOwnedRecords(componentRecord)
     for (const ownedRecord of ownedRecords) handledRecords.add(ownedRecord)
 
-    const currentPartId = componentRecord.getNumber("CURRENTPARTID") ?? 1
     const visibleOwnedRecords = ownedRecords.filter((record) =>
-      isOwnedRecordVisible(record, currentPartId),
+      matchesComponentPartAndDisplayMode({
+        component: componentRecord,
+        ownerPartDisplayMode: record.getNumber("OWNERPARTDISPLAYMODE"),
+        ownerPartId: record.getNumber("OWNERPARTID"),
+      }),
     )
     const pins = visibleOwnedRecords.filter(
       (record) =>
@@ -1819,20 +1823,6 @@ function findOwnedText(
         record.getDecoded("NAME")?.toLowerCase() === name.toLowerCase(),
     )
     ?.getDecoded("TEXT")
-}
-
-function isOwnedRecordVisible(
-  record: AltiumRecord,
-  currentPartId: number,
-): boolean {
-  const ownerPartId = record.getNumber("OWNERPARTID")
-  const ownerPartDisplayMode = record.getNumber("OWNERPARTDISPLAYMODE")
-  return (
-    (ownerPartId === undefined ||
-      ownerPartId <= 0 ||
-      ownerPartId === currentPartId) &&
-    (ownerPartDisplayMode === undefined || ownerPartDisplayMode === 0)
-  )
 }
 
 function isPinHidden(pin: AltiumRecord): boolean {
