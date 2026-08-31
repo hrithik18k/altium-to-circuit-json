@@ -16,6 +16,9 @@ export function matchesComponentPartAndDisplayMode({
     (ownerPartId === undefined ||
       ownerPartId <= 0 ||
       ownerPartId === currentPartId) &&
-    (ownerPartDisplayMode ?? 0) === currentDisplayMode
+    ((ownerPartId !== undefined &&
+      ownerPartId <= 0 &&
+      ownerPartDisplayMode === undefined) ||
+      (ownerPartDisplayMode ?? 0) === currentDisplayMode)
   )
 }
