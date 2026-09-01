@@ -1851,7 +1851,7 @@ function getMultipartDesignator({
   designator: string
   partCount: number
 }): string {
-  if (partCount <= 1 || currentPartId <= 0) return designator
+  if (partCount <= 1 || currentPartId <= 1) return designator
 
   let partNumber = currentPartId
   let suffix = ""

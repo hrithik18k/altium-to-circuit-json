@@ -34,6 +34,13 @@ export const TI_TMDS62LEVM_SCHEMATIC_SHEET_NUMBERS = Array.from(
 
 export const DIRECT_REFERENCES: DirectReferenceSpec[] = [
   {
+    filename: "fpga1394-s02.SchDoc",
+    sha256: "5d80c91889d92551b87c09cf3f269db325c8d8b2751ea885c533ce3dd2c0e43b",
+    source:
+      "jhu-cisst/FPGA1394@b0a9dbfd8af3fb902fd05d26375927e0d125713d (BSD-3-Clause)",
+    url: "https://raw.githubusercontent.com/jhu-cisst/FPGA1394/b0a9dbfd8af3fb902fd05d26375927e0d125713d/S02.SchDoc",
+  },
+  {
     filename: "simplefocmini-2024-04-26.PcbDoc",
     sha256: "8328cebe97ba8623fb2b707490e3473c6f7dc13fb0502b596b0e40c7e1613d24",
     source:
