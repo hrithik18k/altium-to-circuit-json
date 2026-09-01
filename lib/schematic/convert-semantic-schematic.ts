@@ -196,8 +196,9 @@ function convertComponents(params: {
     for (const ownedRecord of ownedRecords) handledRecords.add(ownedRecord)
 
     const currentPartId = componentRecord.getNumber("CURRENTPARTID") ?? 1
+    const currentDisplayMode = componentRecord.getNumber("DISPLAYMODE") ?? 0
     const visibleOwnedRecords = ownedRecords.filter((record) =>
-      isOwnedRecordVisible(record, currentPartId),
+      isOwnedRecordVisible(record, currentPartId, currentDisplayMode),
     )
     const pins = visibleOwnedRecords.filter(
       (record) =>
@@ -239,6 +240,11 @@ function convertComponents(params: {
       "Mfr_part_number",
     )
     const normalizedDesignator = designator.trim().toUpperCase()
+    const schematicDesignator = getMultipartDesignator({
+      currentPartId,
+      designator,
+      partCount: componentRecord.getNumber("PARTCOUNT") ?? 1,
+    })
     const existingSourceComponentId =
       sourceComponentIdByDesignator.get(normalizedDesignator)
     const sourceComponentId =
@@ -331,7 +337,7 @@ function convertComponents(params: {
             x: center.x - size.width / 2,
             y: center.y + size.height / 2 + 0.13,
           },
-          text: designator,
+          text: schematicDesignator,
         }),
       )
       if (value) {
@@ -1824,15 +1830,37 @@ function findOwnedText(
 function isOwnedRecordVisible(
   record: AltiumRecord,
   currentPartId: number,
+  currentDisplayMode: number,
 ): boolean {
   const ownerPartId = record.getNumber("OWNERPARTID")
-  const ownerPartDisplayMode = record.getNumber("OWNERPARTDISPLAYMODE")
+  const ownerPartDisplayMode = record.getNumber("OWNERPARTDISPLAYMODE") ?? 0
   return (
     (ownerPartId === undefined ||
       ownerPartId <= 0 ||
       ownerPartId === currentPartId) &&
-    (ownerPartDisplayMode === undefined || ownerPartDisplayMode === 0)
+    ownerPartDisplayMode === currentDisplayMode
   )
+}
+
+function getMultipartDesignator({
+  currentPartId,
+  designator,
+  partCount,
+}: {
+  currentPartId: number
+  designator: string
+  partCount: number
+}): string {
+  if (partCount <= 1 || currentPartId <= 0) return designator
+
+  let partNumber = currentPartId
+  let suffix = ""
+  while (partNumber > 0) {
+    partNumber -= 1
+    suffix = String.fromCharCode(65 + (partNumber % 26)) + suffix
+    partNumber = Math.floor(partNumber / 26)
+  }
+  return `${designator}${suffix}`
 }
 
 function isPinHidden(pin: AltiumRecord): boolean {
