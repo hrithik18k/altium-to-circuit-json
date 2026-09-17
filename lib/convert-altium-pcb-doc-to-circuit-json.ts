@@ -408,6 +408,10 @@ function convertPad(
   const y = milsToMillimeters(position.y)
   const width = milsToMillimeters(geometry.widthMils)
   const height = milsToMillimeters(geometry.heightMils)
+  const cornerRadius =
+    geometry.cornerRadiusMils === undefined
+      ? undefined
+      : milsToMillimeters(geometry.cornerRadiusMils)
   const holeDiameter = milsToMillimeters(record.holeSizeMils ?? 0)
   const shape = normalizeShape(geometry.shape)
   const holeOffset = getRotatedHoleOffset(record)
@@ -453,10 +457,7 @@ function convertPad(
           ...(rotated ? { hole_ccw_rotation: record.holeRotation } : {}),
           rect_pad_width: width,
           rect_pad_height: height,
-          rect_border_radius:
-            geometry.cornerRadiusMils === undefined
-              ? undefined
-              : milsToMillimeters(geometry.cornerRadiusMils),
+          rect_border_radius: cornerRadius,
           ...(rotated ? { rect_ccw_rotation: record.rotation } : {}),
           hole_offset_x: holeOffset.x,
           hole_offset_y: holeOffset.y,
@@ -490,9 +491,7 @@ function convertPad(
         hole_diameter: Math.max(holeDiameter, MILS_TO_MILLIMETERS),
         rect_pad_width: width,
         rect_pad_height: height,
-        rect_border_radius: shape.includes("ROUNDRECT")
-          ? milsToMillimeters(geometry.cornerRadiusMils ?? 0)
-          : 0,
+        rect_border_radius: cornerRadius,
         rect_ccw_rotation: record.rotation,
         hole_offset_x: holeOffset.x,
         hole_offset_y: holeOffset.y,
@@ -603,9 +602,6 @@ function convertPad(
         }
   }
 
-  const cornerRadius = shape.includes("ROUNDRECT")
-    ? milsToMillimeters(geometry.cornerRadiusMils ?? 0)
-    : undefined
   return record.rotation === 0
     ? { ...base, shape: "rect", width, height, corner_radius: cornerRadius }
     : {
