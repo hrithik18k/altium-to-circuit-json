@@ -33,6 +33,10 @@ import type {
   Point,
 } from "circuit-json"
 import { convertAltiumCopperAreas } from "./pcb/convert-altium-copper-areas"
+import {
+  getAltiumPadGeometry,
+  getAltiumSlotHoleSize,
+} from "./pcb/get-altium-pad-geometry"
 import { getPreferredPcbBoardOutline } from "./pcb/get-board-outline"
 import { mapAltiumCopperLayer } from "./pcb/map-altium-copper-layer"
 import { stitchConnectedAltiumPaths } from "./pcb/stitch-connected-paths"
@@ -398,14 +402,14 @@ function convertPad(
   index: number,
 ): PcbSmtPad | PcbPlatedHole | PcbHole | undefined {
   const position = record.position
-  const size = record.size
-  if (!position || !size) return undefined
+  const geometry = getAltiumPadGeometry(record)
+  if (!position || !geometry) return undefined
   const x = milsToMillimeters(position.x)
   const y = milsToMillimeters(position.y)
-  const width = milsToMillimeters(size.width)
-  const height = milsToMillimeters(size.height)
+  const width = milsToMillimeters(geometry.widthMils)
+  const height = milsToMillimeters(geometry.heightMils)
   const holeDiameter = milsToMillimeters(record.holeSizeMils ?? 0)
-  const shape = normalizeShape(record.shape)
+  const shape = normalizeShape(geometry.shape)
   const holeOffset = getRotatedHoleOffset(record)
   const id = `altium_${index}`
 
@@ -424,19 +428,16 @@ function convertPad(
     const slotLengthMils = getMeasurement(record, "SLOTLENGTH")
     const holeWidthMils = record.holeWidthMils ?? record.holeSizeMils
     const isSlot =
+      record.getNumber("HOLETYPE") === 2 ||
       normalizeShape(record.holeType).includes("SLOT") ||
       (slotLengthMils ?? 0) > (record.holeSizeMils ?? 0) ||
       (holeWidthMils ?? 0) > (record.holeSizeMils ?? 0)
     const layers: LayerRef[] = ["top", "bottom"]
 
     if (isSlot) {
-      const holeWidth = milsToMillimeters(
-        Math.max(
-          slotLengthMils ?? holeWidthMils ?? record.holeSizeMils ?? 1,
-          1,
-        ),
-      )
-      const holeHeight = Math.max(holeDiameter, MILS_TO_MILLIMETERS)
+      const slotHoleSize = getAltiumSlotHoleSize(record)
+      const holeWidth = milsToMillimeters(slotHoleSize.widthMils)
+      const holeHeight = milsToMillimeters(slotHoleSize.heightMils)
       if (isRectangularShape(shape)) {
         const rotated = record.holeRotation !== 0 || record.rotation !== 0
         return {
@@ -452,6 +453,10 @@ function convertPad(
           ...(rotated ? { hole_ccw_rotation: record.holeRotation } : {}),
           rect_pad_width: width,
           rect_pad_height: height,
+          rect_border_radius:
+            geometry.cornerRadiusMils === undefined
+              ? undefined
+              : milsToMillimeters(geometry.cornerRadiusMils),
           ...(rotated ? { rect_ccw_rotation: record.rotation } : {}),
           hole_offset_x: holeOffset.x,
           hole_offset_y: holeOffset.y,
@@ -486,7 +491,7 @@ function convertPad(
         rect_pad_width: width,
         rect_pad_height: height,
         rect_border_radius: shape.includes("ROUNDRECT")
-          ? Math.min(width, height) * 0.18
+          ? milsToMillimeters(geometry.cornerRadiusMils ?? 0)
           : 0,
         rect_ccw_rotation: record.rotation,
         hole_offset_x: holeOffset.x,
@@ -599,7 +604,7 @@ function convertPad(
   }
 
   const cornerRadius = shape.includes("ROUNDRECT")
-    ? Math.min(width, height) * 0.18
+    ? milsToMillimeters(geometry.cornerRadiusMils ?? 0)
     : undefined
   return record.rotation === 0
     ? { ...base, shape: "rect", width, height, corner_radius: cornerRadius }
