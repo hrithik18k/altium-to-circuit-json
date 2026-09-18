@@ -27,6 +27,7 @@ import type {
   PcbFabricationNoteDimension,
   PcbHole,
   PcbPlatedHole,
+  PcbSilkscreenGraphic,
   PcbSilkscreenLine,
   PcbSilkscreenPath,
   PcbSilkscreenRect,
@@ -190,6 +191,13 @@ export function convertAltiumPcbDocToCircuitJson(
         const text = convertCopperText(record, index)
         if (text) elements.push(text)
       }
+      continue
+    }
+
+    if (record instanceof AltiumRegionRecord && isOverlayLayer(record.layer)) {
+      if (options.includeSilkscreen === false) continue
+      const graphic = convertSilkscreenRegion(record, index)
+      if (graphic) elements.push(graphic)
       continue
     }
 
@@ -888,6 +896,31 @@ function convertSilkscreenFill(
     is_filled: true,
     has_stroke: false,
     ccw_rotation: record.rotation,
+    layer: mapOverlayLayer(record.layer),
+  }
+}
+
+function convertSilkscreenRegion(
+  record: AltiumRegionRecord,
+  index: number,
+): PcbSilkscreenGraphic | undefined {
+  const geometry = getPcbRegionGeometry(record)
+  const outerVertices = geometry.outline.points.map(toMillimeterPoint)
+  if (outerVertices.length < 3) return undefined
+
+  const innerRings = geometry.holes
+    .map((hole) => ({ vertices: hole.points.map(toMillimeterPoint) }))
+    .filter((ring) => ring.vertices.length >= 3)
+
+  return {
+    type: "pcb_silkscreen_graphic",
+    pcb_silkscreen_graphic_id: `pcb_silkscreen_graphic_altium_region_${index}`,
+    pcb_component_id: pcbComponentIdForRecord(record),
+    shape: "brep",
+    brep_shape: {
+      outer_ring: { vertices: outerVertices },
+      inner_rings: innerRings,
+    },
     layer: mapOverlayLayer(record.layer),
   }
 }
