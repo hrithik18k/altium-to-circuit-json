@@ -14,6 +14,26 @@ test(
       })
 
     expectValidImportedPcb({ circuitJson, circuitJsonSvg })
+    const components = circuitJson.filter(
+      (element) => element.type === "pcb_component",
+    )
+    const componentIds = new Set(
+      components.map((component) => component.pcb_component_id),
+    )
+    const padsAndHoles = circuitJson.filter(
+      (element) =>
+        element.type === "pcb_smtpad" ||
+        element.type === "pcb_plated_hole" ||
+        element.type === "pcb_hole",
+    )
+    expect(padsAndHoles.length).toBeGreaterThan(0)
+    expect(
+      padsAndHoles.every(
+        (element) =>
+          element.pcb_component_id !== undefined &&
+          componentIds.has(element.pcb_component_id),
+      ),
+    ).toBe(true)
     await expect(comparisonSvg).toMatchSvgSnapshot(import.meta.path)
   },
   { timeout: 40_000 },

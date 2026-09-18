@@ -56,6 +56,11 @@ export function convertAltiumPcbDocToCircuitJson(
   options: ConvertAltiumPcbDocOptions = {},
 ): AnyCircuitElement[] {
   const elements: AnyCircuitElement[] = []
+  const componentIds = new Map(
+    document.components.flatMap((component, index) =>
+      component.position ? [[component, componentId(index)] as const] : [],
+    ),
+  )
 
   if (options.includeBoardOutline !== false) {
     elements.push(createBoard(document))
@@ -108,7 +113,15 @@ export function convertAltiumPcbDocToCircuitJson(
 
   for (const [index, record] of document.records.entries()) {
     if (record instanceof AltiumPadRecord && options.includePads !== false) {
-      const pad = convertPad(record, index)
+      const owningComponent =
+        options.includeComponents === false
+          ? undefined
+          : document.getComponentForRecord(record)
+      const pad = convertPad(
+        record,
+        index,
+        owningComponent ? componentIds.get(owningComponent) : undefined,
+      )
       if (pad) elements.push(pad)
       continue
     }
@@ -395,6 +408,7 @@ function convertVia(
 function convertPad(
   record: AltiumPadRecord,
   index: number,
+  pcbComponentId?: string,
 ): PcbSmtPad | PcbPlatedHole | PcbHole | undefined {
   const position = record.position
   const size = record.size
@@ -406,11 +420,15 @@ function convertPad(
   const holeDiameter = milsToMillimeters(record.holeSizeMils ?? 0)
   const shape = normalizeShape(record.shape)
   const id = `altium_${index}`
+  const componentOwnership = pcbComponentId
+    ? { pcb_component_id: pcbComponentId }
+    : {}
 
   if (record.plated === false && holeDiameter > 0) {
     return {
       type: "pcb_hole",
       pcb_hole_id: `pcb_hole_${id}`,
+      ...componentOwnership,
       hole_shape: "circle",
       hole_diameter: holeDiameter,
       x,
@@ -440,6 +458,7 @@ function convertPad(
         return {
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+          ...componentOwnership,
           shape: rotated
             ? "rotated_pill_hole_with_rect_pad"
             : "pill_hole_with_rect_pad",
@@ -461,6 +480,7 @@ function convertPad(
       return {
         type: "pcb_plated_hole",
         pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+        ...componentOwnership,
         shape: "pill",
         outer_width: width,
         outer_height: height,
@@ -477,6 +497,7 @@ function convertPad(
       return {
         type: "pcb_plated_hole",
         pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+        ...componentOwnership,
         shape: "circular_hole_with_rect_pad",
         hole_shape: "circle",
         pad_shape: "rect",
@@ -499,6 +520,7 @@ function convertPad(
       return {
         type: "pcb_plated_hole",
         pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+        ...componentOwnership,
         shape: "hole_with_polygon_pad",
         hole_shape: "circle",
         hole_diameter: Math.max(holeDiameter, MILS_TO_MILLIMETERS),
@@ -522,6 +544,7 @@ function convertPad(
         return {
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+          ...componentOwnership,
           shape: "pill",
           outer_width: width,
           outer_height: height,
@@ -538,6 +561,7 @@ function convertPad(
     return {
       type: "pcb_plated_hole",
       pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+      ...componentOwnership,
       shape: "circle",
       outer_diameter: Math.max(width, height),
       hole_diameter: Math.max(holeDiameter, MILS_TO_MILLIMETERS),
@@ -552,6 +576,7 @@ function convertPad(
   const base = {
     type: "pcb_smtpad" as const,
     pcb_smtpad_id: `pcb_smtpad_${id}`,
+    ...componentOwnership,
     x,
     y,
     layer,
