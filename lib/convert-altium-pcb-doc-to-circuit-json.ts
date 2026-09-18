@@ -161,6 +161,19 @@ export function convertAltiumPcbDocToCircuitJson(
       continue
     }
 
+    if (record instanceof AltiumArcRecord) {
+      if (isCourtyardLayer(record.layer)) continue
+      if (isOverlayLayer(record.layer)) {
+        if (options.includeSilkscreen === false) continue
+        const path = convertSilkscreenArc(record, index)
+        if (path) elements.push(path)
+      } else if (options.includeTraces !== false) {
+        const trace = convertArcTrack(record, index)
+        if (trace) elements.push(trace)
+      }
+      continue
+    }
+
     if (record instanceof AltiumTextRecord) {
       if (isCourtyardLayer(record.layer)) continue
       if (isOverlayLayer(record.layer)) {
@@ -181,10 +194,7 @@ export function convertAltiumPcbDocToCircuitJson(
       continue
     }
 
-    if (record instanceof AltiumArcRecord) {
-      const path = convertSilkscreenArc(record, index)
-      if (path) elements.push(path)
-    } else if (record instanceof AltiumFillRecord) {
+    if (record instanceof AltiumFillRecord) {
       const rect = convertSilkscreenFill(record, index)
       if (rect) elements.push(rect)
     }
@@ -514,6 +524,34 @@ function convertTrack(
       { route_type: "wire", ...toMillimeterPoint(start), width, layer },
       { route_type: "wire", ...toMillimeterPoint(end), width, layer },
     ],
+  }
+}
+
+function convertArcTrack(
+  record: AltiumArcRecord,
+  index: number,
+): PcbTrace | undefined {
+  if (!record.center || !record.radiusMils) return undefined
+  const layer = mapAltiumCopperLayer(record.layer)
+  if (!layer) return undefined
+  const width = milsToMillimeters(record.widthMils ?? 4)
+  const points = approximateArc({
+    center: record.center,
+    radius: record.radiusMils,
+    startAngle: record.startAngle,
+    endAngle: record.endAngle,
+  })
+
+  return {
+    type: "pcb_trace",
+    pcb_trace_id: `pcb_trace_altium_arc_${index}`,
+    should_round_corners: true,
+    route: points.map((point) => ({
+      route_type: "wire",
+      ...toMillimeterPoint(point),
+      width,
+      layer,
+    })),
   }
 }
 
