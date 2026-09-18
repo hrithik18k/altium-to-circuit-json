@@ -14,6 +14,15 @@ test(
       })
 
     expectValidImportedPcb({ circuitJson, circuitJsonSvg })
+    const wrappedQuarterCircle = circuitJson.find(
+      (element) =>
+        element.type === "pcb_silkscreen_path" &&
+        element.pcb_silkscreen_path_id === "pcb_silkscreen_path_altium_274",
+    )
+    expect(wrappedQuarterCircle?.type).toBe("pcb_silkscreen_path")
+    if (wrappedQuarterCircle?.type === "pcb_silkscreen_path") {
+      expect(wrappedQuarterCircle.route).toHaveLength(13)
+    }
     await expect(comparisonSvg).toMatchSvgSnapshot(import.meta.path)
   },
   { timeout: 40_000 },

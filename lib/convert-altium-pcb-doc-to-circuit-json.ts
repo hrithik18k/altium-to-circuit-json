@@ -796,7 +796,7 @@ function approximateArc({
   startAngle: number
   endAngle: number
 }): AltiumPoint[] {
-  const sweep = endAngle - startAngle || 360
+  const sweep = (endAngle - startAngle + 360) % 360 || 360
   const segments = Math.max(8, Math.ceil(Math.abs(sweep) / 7.5))
   return Array.from({ length: segments + 1 }, (_, index) => {
     const angle = startAngle + (sweep * index) / segments
