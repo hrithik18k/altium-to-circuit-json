@@ -20,6 +20,7 @@ import type {
   PCBKeepoutCircle,
   PcbBoard,
   PcbComponent,
+  PcbCopperText,
   PcbCourtyardOutline,
   PcbCutout,
   PcbHole,
@@ -148,6 +149,19 @@ export function convertAltiumPcbDocToCircuitJson(
       continue
     }
 
+    if (record instanceof AltiumTextRecord) {
+      if (isCourtyardLayer(record.layer)) continue
+      if (isOverlayLayer(record.layer)) {
+        if (options.includeSilkscreen === false) continue
+        const text = convertSilkscreenText(record, index)
+        if (text) elements.push(text)
+      } else {
+        const text = convertCopperText(record, index)
+        if (text) elements.push(text)
+      }
+      continue
+    }
+
     if (
       options.includeSilkscreen === false ||
       !isOverlayLayer(getLayer(record))
@@ -161,9 +175,6 @@ export function convertAltiumPcbDocToCircuitJson(
     } else if (record instanceof AltiumFillRecord) {
       const rect = convertSilkscreenFill(record, index)
       if (rect) elements.push(rect)
-    } else if (record instanceof AltiumTextRecord) {
-      const text = convertSilkscreenText(record, index)
-      if (text) elements.push(text)
     }
   }
 
@@ -420,6 +431,32 @@ function convertTrack(
       { route_type: "wire", ...toMillimeterPoint(start), width, layer },
       { route_type: "wire", ...toMillimeterPoint(end), width, layer },
     ],
+  }
+}
+
+function convertCopperText(
+  record: AltiumTextRecord,
+  index: number,
+): PcbCopperText | undefined {
+  const text =
+    decodeAltiumWideString(record.getDecoded("WIDESTRING")) ||
+    record.getDecoded("TEXT") ||
+    record.text
+  if (!record.position || !text) return undefined
+  const layer = mapAltiumCopperLayer(record.layer)
+  if (!layer) return undefined
+  return {
+    type: "pcb_copper_text",
+    pcb_copper_text_id: `pcb_copper_text_altium_${index}`,
+    pcb_component_id: pcbComponentIdForRecord(record),
+    text,
+    font: "tscircuit2024",
+    font_size: milsToMillimeters(record.heightMils ?? 30),
+    anchor_position: toMillimeterPoint(record.position),
+    anchor_alignment: mapTextAnchor(record.justification),
+    ccw_rotation: record.rotation,
+    layer,
+    is_mirrored: record.mirrored,
   }
 }
 
