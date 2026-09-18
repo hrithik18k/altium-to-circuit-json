@@ -1,5 +1,6 @@
 import {
   AltiumArcRecord,
+  AltiumDimensionRecord,
   AltiumFillRecord,
   AltiumPadRecord,
   type AltiumPcbDocument,
@@ -23,6 +24,7 @@ import type {
   PcbCopperText,
   PcbCourtyardOutline,
   PcbCutout,
+  PcbFabricationNoteDimension,
   PcbHole,
   PcbPlatedHole,
   PcbSilkscreenLine,
@@ -48,6 +50,7 @@ export interface ConvertAltiumPcbDocOptions {
   includeCopperAreas?: boolean
   includeCourtyards?: boolean
   includeKeepouts?: boolean
+  includeDimensions?: boolean
   includePads?: boolean
   includeSilkscreen?: boolean
   includeTraces?: boolean
@@ -121,6 +124,15 @@ export function convertAltiumPcbDocToCircuitJson(
         document,
       })
       if (keepout) elements.push(keepout)
+      continue
+    }
+
+    if (
+      record instanceof AltiumDimensionRecord &&
+      options.includeDimensions !== false
+    ) {
+      const dimension = convertDimension(record, index)
+      if (dimension) elements.push(dimension)
       continue
     }
 
@@ -216,6 +228,77 @@ function getCopperLayers(document: AltiumPcbDocument): LayerRef[] {
     },
   )
   return layers.length > 0 ? [...new Set(layers)] : ["top", "bottom"]
+}
+
+function convertDimension(
+  record: AltiumDimensionRecord,
+  index: number,
+): PcbFabricationNoteDimension | undefined {
+  const start = record.start
+  const end = record.end
+  if (!start || !end) return undefined
+
+  const deltaX = end.x - start.x
+  const deltaY = end.y - start.y
+  const lengthMils = Math.hypot(deltaX, deltaY)
+  if (lengthMils === 0) return undefined
+
+  const perpendicular = {
+    x: -deltaY / lengthMils,
+    y: deltaX / lengthMils,
+  }
+  const lineAnchor = record.dimensionLineAnchor ?? start
+  const signedOffsetMils =
+    (lineAnchor.x - start.x) * perpendicular.x +
+    (lineAnchor.y - start.y) * perpendicular.y
+  const offsetSign = signedOffsetMils < 0 ? -1 : 1
+
+  return {
+    type: "pcb_fabrication_note_dimension",
+    pcb_fabrication_note_dimension_id: `pcb_fabrication_note_dimension_altium_${index}`,
+    pcb_component_id: BOARD_GRAPHICS_COMPONENT_ID,
+    layer: mapMechanicalLayer(getLayer(record)),
+    from: toMillimeterPoint(start),
+    to: toMillimeterPoint(end),
+    text: getDimensionText(record, lengthMils),
+    offset_distance: milsToMillimeters(Math.abs(signedOffsetMils)),
+    offset_direction: {
+      x: perpendicular.x * offsetSign,
+      y: perpendicular.y * offsetSign,
+    },
+    font: "tscircuit2024",
+    font_size: milsToMillimeters(record.textHeightMils ?? 50),
+    arrow_size: milsToMillimeters(getMeasurement(record, "ARROWSIZE") ?? 40),
+    color: "#ec4899",
+  }
+}
+
+function getDimensionText(
+  record: AltiumDimensionRecord,
+  measuredDistanceMils: number,
+): string {
+  const explicitText = record.getDecoded("TEXTFORMAT")?.trim()
+  if (explicitText && explicitText !== "<>") return explicitText
+
+  const precision = Math.min(Math.max(record.precision ?? 2, 0), 6)
+  const normalizedUnit = record.unit?.toUpperCase() ?? "MILS"
+  let amount = measuredDistanceMils
+  let unitLabel = "mil"
+  if (normalizedUnit.includes("MILLIMETER")) {
+    amount *= MILS_TO_MILLIMETERS
+    unitLabel = "mm"
+  } else if (normalizedUnit.includes("CENTIMETER")) {
+    amount *= MILS_TO_MILLIMETERS / 10
+    unitLabel = "cm"
+  } else if (normalizedUnit.includes("INCH")) {
+    amount /= 1000
+    unitLabel = "in"
+  }
+  return `${record.prefix ?? ""}${amount.toFixed(precision)}${record.suffix ?? ` ${unitLabel}`}`
+}
+
+function mapMechanicalLayer(layer: string | undefined): "top" | "bottom" {
+  return normalizeLayer(layer).includes("BOTTOM") ? "bottom" : "top"
 }
 
 interface CourtyardPath {
