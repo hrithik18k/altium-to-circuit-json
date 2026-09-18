@@ -114,7 +114,11 @@ export function convertAltiumPcbDocToCircuitJson(
       isKeepoutLayer(record.layer) &&
       options.includeKeepouts !== false
     ) {
-      const keepout = convertCircularKeepout(record, index, document)
+      const keepout = convertCircularKeepout({
+        record,
+        recordIndex: index,
+        document,
+      })
       if (keepout) elements.push(keepout)
       continue
     }
@@ -166,11 +170,15 @@ export function convertAltiumPcbDocToCircuitJson(
   return elements
 }
 
-function convertCircularKeepout(
-  record: AltiumArcRecord,
-  index: number,
-  document: AltiumPcbDocument,
-): PCBKeepoutCircle | undefined {
+function convertCircularKeepout({
+  record,
+  recordIndex,
+  document,
+}: {
+  record: AltiumArcRecord
+  recordIndex: number
+  document: AltiumPcbDocument
+}): PCBKeepoutCircle | undefined {
   const center = record.center
   const radiusMils = record.radiusMils
   const rawSweep = record.endAngle - record.startAngle
@@ -179,7 +187,7 @@ function convertCircularKeepout(
 
   return {
     type: "pcb_keepout",
-    pcb_keepout_id: `pcb_keepout_altium_arc_${index}`,
+    pcb_keepout_id: `pcb_keepout_altium_arc_${recordIndex}`,
     shape: "circle",
     center: toMillimeterPoint(center),
     radius: milsToMillimeters(radiusMils + (record.widthMils ?? 0) / 2),
