@@ -30,6 +30,7 @@ import type {
   PcbSmtPad,
   PcbTrace,
   PcbVia,
+  Point,
 } from "circuit-json"
 import { convertAltiumCopperAreas } from "./pcb/convert-altium-copper-areas"
 import { getPreferredPcbBoardOutline } from "./pcb/get-board-outline"
@@ -405,6 +406,7 @@ function convertPad(
   const height = milsToMillimeters(size.height)
   const holeDiameter = milsToMillimeters(record.holeSizeMils ?? 0)
   const shape = normalizeShape(record.shape)
+  const holeOffset = getRotatedHoleOffset(record)
   const id = `altium_${index}`
 
   if (record.plated === false && holeDiameter > 0) {
@@ -451,8 +453,8 @@ function convertPad(
           rect_pad_width: width,
           rect_pad_height: height,
           ...(rotated ? { rect_ccw_rotation: record.rotation } : {}),
-          hole_offset_x: 0,
-          hole_offset_y: 0,
+          hole_offset_x: holeOffset.x,
+          hole_offset_y: holeOffset.y,
           x,
           y,
           layers,
@@ -487,8 +489,8 @@ function convertPad(
           ? Math.min(width, height) * 0.18
           : 0,
         rect_ccw_rotation: record.rotation,
-        hole_offset_x: 0,
-        hole_offset_y: 0,
+        hole_offset_x: holeOffset.x,
+        hole_offset_y: holeOffset.y,
         x,
         y,
         layers,
@@ -509,8 +511,8 @@ function convertPad(
           height,
           rotation: record.rotation,
         }),
-        hole_offset_x: 0,
-        hole_offset_y: 0,
+        hole_offset_x: holeOffset.x,
+        hole_offset_y: holeOffset.y,
         x,
         y,
         layers,
@@ -609,6 +611,21 @@ function convertPad(
         corner_radius: cornerRadius,
         ccw_rotation: record.rotation,
       }
+}
+
+function getRotatedHoleOffset(record: AltiumPadRecord): Point {
+  const offsetXMils = getMeasurement(record, "LAYER0HOLEXOFFSET") ?? 0
+  const offsetYMils = getMeasurement(record, "LAYER0HOLEYOFFSET") ?? 0
+  const radians = (record.rotation * Math.PI) / 180
+  const rotatedXMils =
+    offsetXMils * Math.cos(radians) - offsetYMils * Math.sin(radians)
+  const rotatedYMils =
+    offsetXMils * Math.sin(radians) + offsetYMils * Math.cos(radians)
+
+  return {
+    x: Math.abs(rotatedXMils) < 1e-9 ? 0 : milsToMillimeters(rotatedXMils),
+    y: Math.abs(rotatedYMils) < 1e-9 ? 0 : milsToMillimeters(rotatedYMils),
+  }
 }
 
 function convertSilkscreenLine(
