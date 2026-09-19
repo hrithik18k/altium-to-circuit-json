@@ -29,6 +29,7 @@ import type {
   PcbFabricationNotePath,
   PcbHole,
   PcbPlatedHole,
+  PcbPort,
   PcbSilkscreenGraphic,
   PcbSilkscreenLine,
   PcbSilkscreenPath,
@@ -38,6 +39,8 @@ import type {
   PcbTrace,
   PcbVia,
   SourceNet,
+  SourcePort,
+  SourceSimpleChip,
   SourceTrace,
 } from "circuit-json"
 import { convertAltiumCopperAreas } from "./pcb/convert-altium-copper-areas"
@@ -84,9 +87,13 @@ export function convertAltiumPcbDocToCircuitJson(
   options: ConvertAltiumPcbDocOptions = {},
 ): AnyCircuitElement[] {
   const elements: AnyCircuitElement[] = []
-  const netContext = createPcbNetContext(document)
+  const padContext = createPcbPadContext(document, options)
+  const netContext = createPcbNetContext(
+    document,
+    padContext.sourcePortIdsByNet,
+  )
 
-  elements.push(...netContext.elements)
+  elements.push(...padContext.elements, ...netContext.elements)
 
   if (options.includeBoardOutline !== false) {
     elements.push(createBoard(document))
@@ -110,7 +117,7 @@ export function convertAltiumPcbDocToCircuitJson(
       elements.push({
         type: "pcb_component",
         pcb_component_id: componentId(index),
-        source_component_id: `source_component_altium_${index}`,
+        source_component_id: sourceComponentId(index),
         center: toMillimeterPoint(position),
         width: milsToMillimeters(
           bounds ? bounds.maxX - bounds.minX : (component.heightMils ?? 20),
@@ -175,7 +182,7 @@ export function convertAltiumPcbDocToCircuitJson(
     }
 
     if (record instanceof AltiumPadRecord && options.includePads !== false) {
-      const pad = convertPad(record, index)
+      const pad = convertPad(record, index, padContext)
       if (pad) elements.push(pad)
       continue
     }
@@ -606,7 +613,10 @@ interface PcbNetContext {
   getSourceTraceId: (record: AltiumRecord) => string | undefined
 }
 
-function createPcbNetContext(document: AltiumPcbDocument): PcbNetContext {
+function createPcbNetContext(
+  document: AltiumPcbDocument,
+  sourcePortIdsByNet: Map<AltiumRecord, string[]>,
+): PcbNetContext {
   const sourceNetIdByAltiumNet = new Map(
     document.nets.map((net, index) => [net, `source_net_altium_pcb_${index}`]),
   )
@@ -632,7 +642,7 @@ function createPcbNetContext(document: AltiumPcbDocument): PcbNetContext {
       {
         type: "source_trace",
         source_trace_id: sourceTraceId,
-        connected_source_port_ids: [],
+        connected_source_port_ids: sourcePortIdsByNet.get(net) ?? [],
         connected_source_net_ids: [sourceNetId],
         name,
         display_name: name,
@@ -651,6 +661,143 @@ function createPcbNetContext(document: AltiumPcbDocument): PcbNetContext {
       return net ? sourceTraceIdByAltiumNet.get(net) : undefined
     },
   }
+}
+
+interface PcbPadContext {
+  elements: Array<SourceSimpleChip | SourcePort | PcbPort>
+  sourcePortIdsByNet: Map<AltiumRecord, string[]>
+  getPadRefs: (record: AltiumPadRecord) => {
+    pcb_component_id?: string
+    pcb_port_id?: string
+  }
+}
+
+function createPcbPadContext(
+  document: AltiumPcbDocument,
+  options: ConvertAltiumPcbDocOptions,
+): PcbPadContext {
+  const elements: PcbPadContext["elements"] = []
+  const componentIndexByRecord = new Map(
+    document.components.map((component, index) => [component, index]),
+  )
+
+  if (options.includeComponents !== false) {
+    for (const [index, component] of document.components.entries()) {
+      if (!component.position) continue
+      const name =
+        component.designator?.trim() ||
+        component.footprint?.trim() ||
+        `Component ${index + 1}`
+      elements.push({
+        type: "source_component",
+        ftype: "simple_chip",
+        source_component_id: sourceComponentId(index),
+        name,
+        display_name: name,
+        ...(component.comment?.trim()
+          ? { display_value: component.comment.trim() }
+          : {}),
+      })
+    }
+  }
+
+  const padRefsByRecord = new Map<
+    AltiumPadRecord,
+    { pcb_component_id?: string; pcb_port_id: string }
+  >()
+  const sourcePortIdByLogicalPin = new Map<string, string>()
+  const sourcePortIdSetsByNet = new Map<AltiumRecord, Set<string>>()
+
+  if (options.includePads !== false) {
+    for (const [recordIndex, record] of document.records.entries()) {
+      if (!(record instanceof AltiumPadRecord)) continue
+      const position = record.position
+      const layers = getPadCopperLayers(record)
+      if (!position || layers.length === 0 || !getAltiumPadGeometry(record)) {
+        continue
+      }
+      if (record.plated === false && (record.holeSizeMils ?? 0) > 0) continue
+
+      const component = document.getComponentForRecord(record)
+      const componentIndex = component
+        ? componentIndexByRecord.get(component)
+        : undefined
+      const hasSourceComponent =
+        componentIndex !== undefined &&
+        component?.position !== undefined &&
+        options.includeComponents !== false
+      const padName = record.name?.trim() || `Pad ${recordIndex + 1}`
+      const logicalPinKey =
+        componentIndex === undefined
+          ? `record:${recordIndex}`
+          : `component:${componentIndex}:pad:${padName}`
+      let sourcePortId = sourcePortIdByLogicalPin.get(logicalPinKey)
+      if (!sourcePortId) {
+        sourcePortId = `source_port_altium_pcb_${recordIndex}`
+        sourcePortIdByLogicalPin.set(logicalPinKey, sourcePortId)
+        const pinNumber = Number(padName)
+        elements.push({
+          type: "source_port",
+          source_port_id: sourcePortId,
+          name: padName,
+          port_hints: [padName],
+          ...(Number.isInteger(pinNumber) && pinNumber >= 0
+            ? { pin_number: pinNumber }
+            : {}),
+          ...(hasSourceComponent
+            ? { source_component_id: sourceComponentId(componentIndex) }
+            : {}),
+        })
+      }
+
+      const pcbPortId = `pcb_port_altium_${recordIndex}`
+      const pcbComponentId = hasSourceComponent
+        ? componentId(componentIndex)
+        : undefined
+      elements.push({
+        type: "pcb_port",
+        pcb_port_id: pcbPortId,
+        source_port_id: sourcePortId,
+        ...(pcbComponentId ? { pcb_component_id: pcbComponentId } : {}),
+        ...toMillimeterPoint(position),
+        layers,
+      })
+      padRefsByRecord.set(record, {
+        pcb_port_id: pcbPortId,
+        ...(pcbComponentId ? { pcb_component_id: pcbComponentId } : {}),
+      })
+
+      const net = document.getNetForRecord(record)
+      if (net) {
+        const sourcePortIds =
+          sourcePortIdSetsByNet.get(net) ?? new Set<string>()
+        sourcePortIds.add(sourcePortId)
+        sourcePortIdSetsByNet.set(net, sourcePortIds)
+      }
+    }
+  }
+
+  const sourcePortIdsByNet = new Map(
+    [...sourcePortIdSetsByNet].map(([net, sourcePortIds]) => [
+      net,
+      [...sourcePortIds],
+    ]),
+  )
+
+  return {
+    elements,
+    sourcePortIdsByNet,
+    getPadRefs: (record) => padRefsByRecord.get(record) ?? {},
+  }
+}
+
+function getPadCopperLayers(record: AltiumPadRecord): LayerRef[] {
+  const holeDiameter = record.holeSizeMils ?? 0
+  if (record.behavior === "through-hole" || holeDiameter > 0) {
+    return record.plated === false ? [] : ["top", "bottom"]
+  }
+  const layer = mapAltiumCopperLayer(record.layer)
+  return layer ? [layer] : []
 }
 
 function convertTrack(
@@ -763,6 +910,7 @@ function convertVia(
 function convertPad(
   record: AltiumPadRecord,
   index: number,
+  padContext: PcbPadContext,
 ): PcbSmtPad | PcbPlatedHole | PcbHole | undefined {
   const position = record.position
   const geometry = getAltiumPadGeometry(record)
@@ -790,6 +938,8 @@ function convertPad(
     }
   }
 
+  const padRefs = padContext.getPadRefs(record)
+
   if (record.behavior === "through-hole" || holeDiameter > 0) {
     const holeGeometry = getAltiumPadHoleGeometry(record)
     const holeOffsetX = milsToMillimeters(holeGeometry.offsetXMils)
@@ -813,6 +963,7 @@ function convertPad(
         return {
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+          ...padRefs,
           shape: rotated
             ? "rotated_pill_hole_with_rect_pad"
             : "pill_hole_with_rect_pad",
@@ -837,6 +988,7 @@ function convertPad(
       return {
         type: "pcb_plated_hole",
         pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+        ...padRefs,
         shape: "pill",
         outer_width: width,
         outer_height: height,
@@ -853,6 +1005,7 @@ function convertPad(
       return {
         type: "pcb_plated_hole",
         pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+        ...padRefs,
         shape: "circular_hole_with_rect_pad",
         hole_shape: "circle",
         pad_shape: "rect",
@@ -873,6 +1026,7 @@ function convertPad(
       return {
         type: "pcb_plated_hole",
         pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+        ...padRefs,
         shape: "hole_with_polygon_pad",
         hole_shape: "circle",
         hole_diameter: Math.max(holeDiameter, MILS_TO_MILLIMETERS),
@@ -896,6 +1050,7 @@ function convertPad(
         return {
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+          ...padRefs,
           shape: "pill",
           outer_width: width,
           outer_height: height,
@@ -912,6 +1067,7 @@ function convertPad(
     return {
       type: "pcb_plated_hole",
       pcb_plated_hole_id: `pcb_plated_hole_${id}`,
+      ...padRefs,
       shape: "circle",
       outer_diameter: Math.max(width, height),
       hole_diameter: Math.max(holeDiameter, MILS_TO_MILLIMETERS),
@@ -926,6 +1082,7 @@ function convertPad(
   const base = {
     type: "pcb_smtpad" as const,
     pcb_smtpad_id: `pcb_smtpad_${id}`,
+    ...padRefs,
     x,
     y,
     layer,
@@ -1111,6 +1268,10 @@ function pcbComponentIdForRecord(record: AltiumRecord): string {
 
 function componentId(index: number): string {
   return `pcb_component_altium_${index}`
+}
+
+function sourceComponentId(index: number): string {
+  return `source_component_altium_${index}`
 }
 
 function mapTextAnchor(justification: string | undefined): NinePointAnchor {
