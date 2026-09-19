@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import { parseAltiumPcbDoc } from "altiumts"
 import { any_circuit_element } from "circuit-json"
+import { getFullConnectivityMapFromCircuitJson } from "circuit-json-to-connectivity-map"
 import { convertAltiumPcbDocToCircuitJson } from "../../lib"
 
 test("preserves Altium PCB net identities on routed copper", () => {
@@ -26,6 +27,13 @@ test("preserves Altium PCB net identities on routed copper", () => {
   )
   const via = circuitJson.find((element) => element.type === "pcb_via")
   const pour = circuitJson.find((element) => element.type === "pcb_copper_pour")
+  const connectivityMap = getFullConnectivityMapFromCircuitJson(circuitJson)
+  const powerTrace = pcbTraces.find(
+    (trace) => trace.source_trace_id === "source_trace_altium_pcb_0",
+  )
+  const senseTrace = pcbTraces.find(
+    (trace) => trace.source_trace_id === "source_trace_altium_pcb_1",
+  )
 
   expect(nets).toMatchObject([
     { source_net_id: "source_net_altium_pcb_0", name: "POWER_RAIL" },
@@ -50,6 +58,21 @@ test("preserves Altium PCB net identities on routed copper", () => {
     source_trace_id: "source_trace_altium_pcb_1",
   })
   expect(pour).toMatchObject({ source_net_id: "source_net_altium_pcb_0" })
+  expect(powerTrace).toBeDefined()
+  expect(senseTrace).toBeDefined()
+  if (!powerTrace || !senseTrace) throw new Error("Expected both routed nets")
+  expect(
+    connectivityMap.areIdsConnected(
+      "source_net_altium_pcb_0",
+      powerTrace.pcb_trace_id,
+    ),
+  ).toBe(true)
+  expect(
+    connectivityMap.areIdsConnected(
+      "source_net_altium_pcb_1",
+      senseTrace.pcb_trace_id,
+    ),
+  ).toBe(true)
   expect(
     circuitJson.every(
       (element) => any_circuit_element.safeParse(element).success,

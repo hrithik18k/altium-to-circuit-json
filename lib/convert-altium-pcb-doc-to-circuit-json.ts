@@ -604,12 +604,11 @@ function convertTrack(
   const layer = mapAltiumCopperLayer(record.layer)
   if (!start || !end || !layer) return undefined
   const width = milsToMillimeters(record.widthMils ?? 4)
+  const sourceTraceId = netContext.getSourceTraceId(record)
   return {
     type: "pcb_trace",
     pcb_trace_id: `pcb_trace_altium_${index}`,
-    ...(netContext.getSourceTraceId(record)
-      ? { source_trace_id: netContext.getSourceTraceId(record) }
-      : {}),
+    ...(sourceTraceId ? { source_trace_id: sourceTraceId } : {}),
     should_round_corners: true,
     route: [
       { route_type: "wire", ...toMillimeterPoint(start), width, layer },
@@ -633,13 +632,12 @@ function convertArcTrack(
     startAngle: record.startAngle,
     endAngle: record.endAngle,
   })
+  const sourceTraceId = netContext.getSourceTraceId(record)
 
   return {
     type: "pcb_trace",
     pcb_trace_id: `pcb_trace_altium_arc_${index}`,
-    ...(netContext.getSourceTraceId(record)
-      ? { source_trace_id: netContext.getSourceTraceId(record) }
-      : {}),
+    ...(sourceTraceId ? { source_trace_id: sourceTraceId } : {}),
     should_round_corners: true,
     route: points.map((point) => ({
       route_type: "wire",
@@ -686,15 +684,13 @@ function convertVia(
   const endLayer = mapAltiumCopperLayer(record.endLayer) ?? "bottom"
   const layers = startLayer === endLayer ? [startLayer] : [startLayer, endLayer]
   const outerDiameter = milsToMillimeters(record.diameterMils ?? 20)
+  const sourceNetId = netContext.getSourceNetId(record)
+  const sourceTraceId = netContext.getSourceTraceId(record)
   return {
     type: "pcb_via",
     pcb_via_id: `pcb_via_altium_${index}`,
-    ...(netContext.getSourceNetId(record)
-      ? { source_net_id: netContext.getSourceNetId(record) }
-      : {}),
-    ...(netContext.getSourceTraceId(record)
-      ? { source_trace_id: netContext.getSourceTraceId(record) }
-      : {}),
+    ...(sourceNetId ? { source_net_id: sourceNetId } : {}),
+    ...(sourceTraceId ? { source_trace_id: sourceTraceId } : {}),
     ...toMillimeterPoint(record.position),
     outer_diameter: outerDiameter,
     hole_diameter: milsToMillimeters(
