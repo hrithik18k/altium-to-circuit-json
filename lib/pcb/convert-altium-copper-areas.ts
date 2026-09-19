@@ -39,6 +39,8 @@ export function convertAltiumCopperAreas(
   )
 
   return document.records.flatMap((record, recordIndex) => {
+    if (record.getBoolean("KEEPOUT") === true) return []
+
     if (record instanceof AltiumRegionRecord) {
       return convertCopperRegion({
         record,

@@ -20,6 +20,7 @@ import type {
   LayerRef,
   NinePointAnchor,
   PCBKeepoutCircle,
+  PCBKeepoutRect,
   PcbBoard,
   PcbComponent,
   PcbCopperText,
@@ -144,7 +145,7 @@ export function convertAltiumPcbDocToCircuitJson(
   for (const [index, record] of document.records.entries()) {
     if (
       record instanceof AltiumArcRecord &&
-      isKeepoutLayer(record.layer) &&
+      isAltiumKeepout(record) &&
       options.includeKeepouts !== false
     ) {
       const keepout = convertCircularKeepout({
@@ -155,6 +156,24 @@ export function convertAltiumPcbDocToCircuitJson(
       if (keepout) elements.push(keepout)
       continue
     }
+
+    if (
+      record instanceof AltiumFillRecord &&
+      isAltiumKeepout(record) &&
+      options.includeKeepouts !== false
+    ) {
+      const keepout = convertRectangularKeepout({
+        record,
+        recordIndex: index,
+        document,
+      })
+      if (keepout) elements.push(keepout)
+      continue
+    }
+
+    // Circuit JSON cannot represent stroked track or partial-arc keepouts yet,
+    // but they must never be emitted as conductive copper.
+    if (isAltiumKeepout(record)) continue
 
     if (
       record instanceof AltiumDimensionRecord &&
@@ -317,9 +336,65 @@ function convertCircularKeepout({
     shape: "circle",
     center: toMillimeterPoint(center),
     radius: milsToMillimeters(radiusMils + (record.widthMils ?? 0) / 2),
-    layers: getCopperLayers(document),
+    layers: getKeepoutLayers(record.layer, document),
     description: "Altium circular keepout",
   }
+}
+
+function convertRectangularKeepout({
+  record,
+  recordIndex,
+  document,
+}: {
+  record: AltiumFillRecord
+  recordIndex: number
+  document: AltiumPcbDocument
+}): PCBKeepoutRect | undefined {
+  const bounds = record.bounds
+  if (!bounds) return undefined
+
+  const widthMils = bounds.maxX - bounds.minX
+  const heightMils = bounds.maxY - bounds.minY
+  if (widthMils <= 0 || heightMils <= 0) return undefined
+
+  // PCBKeepoutRect has no rotation field, so use the rotated rectangle's
+  // axis-aligned envelope. This is conservative and never permits copper in
+  // an area that Altium marks as restricted.
+  const angle = (record.rotation * Math.PI) / 180
+  const width =
+    Math.abs(widthMils * Math.cos(angle)) +
+    Math.abs(heightMils * Math.sin(angle))
+  const height =
+    Math.abs(widthMils * Math.sin(angle)) +
+    Math.abs(heightMils * Math.cos(angle))
+
+  return {
+    type: "pcb_keepout",
+    pcb_keepout_id: `pcb_keepout_altium_fill_${recordIndex}`,
+    shape: "rect",
+    center: {
+      x: milsToMillimeters((bounds.minX + bounds.maxX) / 2),
+      y: milsToMillimeters((bounds.minY + bounds.maxY) / 2),
+    },
+    width: milsToMillimeters(width),
+    height: milsToMillimeters(height),
+    layers: getKeepoutLayers(record.layer, document),
+    description: "Altium rectangular keepout",
+  }
+}
+
+function getKeepoutLayers(
+  layerName: string | undefined,
+  document: AltiumPcbDocument,
+): LayerRef[] {
+  const layer = mapAltiumCopperLayer(layerName)
+  return layer ? [layer] : getCopperLayers(document)
+}
+
+function isAltiumKeepout(record: AltiumRecord): boolean {
+  return (
+    record.getBoolean("KEEPOUT") === true || isKeepoutLayer(getLayer(record))
+  )
 }
 
 function getCopperLayers(document: AltiumPcbDocument): LayerRef[] {
