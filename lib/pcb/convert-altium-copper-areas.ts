@@ -3,6 +3,7 @@ import {
   type AltiumPcbContour,
   type AltiumPcbDocument,
   AltiumPolygonRecord,
+  type AltiumRecord,
   AltiumRegionRecord,
   getPcbContour,
   getPcbRecordPolygonIndex,
@@ -15,6 +16,11 @@ const MILS_TO_MILLIMETERS = 0.0254
 
 export function convertAltiumCopperAreas(
   document: AltiumPcbDocument,
+  {
+    getSourceNetId = () => undefined,
+  }: {
+    getSourceNetId?: (record: AltiumRecord) => string | undefined
+  } = {},
 ): PcbCopperPour[] {
   const polygonIndexesWithRegions = new Set(
     document.records.flatMap((record) => {
@@ -34,7 +40,11 @@ export function convertAltiumCopperAreas(
 
   return document.records.flatMap((record, recordIndex) => {
     if (record instanceof AltiumRegionRecord) {
-      return convertCopperRegion({ record, recordIndex })
+      return convertCopperRegion({
+        record,
+        recordIndex,
+        sourceNetId: getSourceNetId(record),
+      })
     }
     if (record instanceof AltiumPolygonRecord) {
       const polygonIndex = polygonIndexes.get(record)
@@ -45,10 +55,18 @@ export function convertAltiumCopperAreas(
       ) {
         return []
       }
-      return convertCopperPolygon({ polygonIndex, record })
+      return convertCopperPolygon({
+        polygonIndex,
+        record,
+        sourceNetId: getSourceNetId(record),
+      })
     }
     if (record instanceof AltiumFillRecord) {
-      return convertCopperFill({ record, recordIndex })
+      return convertCopperFill({
+        record,
+        recordIndex,
+        sourceNetId: getSourceNetId(record),
+      })
     }
     return []
   })
@@ -57,9 +75,11 @@ export function convertAltiumCopperAreas(
 function convertCopperRegion({
   record,
   recordIndex,
+  sourceNetId,
 }: {
   record: AltiumRegionRecord
   recordIndex: number
+  sourceNetId: string | undefined
 }): PcbCopperPour[] {
   if (record.recordKind !== "Region" || record.regionKind !== "COPPER") {
     return []
@@ -79,6 +99,7 @@ function convertCopperRegion({
       {
         type: "pcb_copper_pour",
         pcb_copper_pour_id: `pcb_copper_pour_altium_region_${recordIndex}`,
+        ...(sourceNetId ? { source_net_id: sourceNetId } : {}),
         covered_with_solder_mask: true,
         layer,
         shape: "polygon",
@@ -91,6 +112,7 @@ function convertCopperRegion({
     {
       type: "pcb_copper_pour",
       pcb_copper_pour_id: `pcb_copper_pour_altium_region_${recordIndex}`,
+      ...(sourceNetId ? { source_net_id: sourceNetId } : {}),
       covered_with_solder_mask: true,
       layer,
       shape: "brep",
@@ -105,9 +127,11 @@ function convertCopperRegion({
 function convertCopperPolygon({
   polygonIndex,
   record,
+  sourceNetId,
 }: {
   polygonIndex: number
   record: AltiumPolygonRecord
+  sourceNetId: string | undefined
 }): PcbCopperPour[] {
   const layer = mapAltiumCopperLayer(record.layer)
   if (!layer) return []
@@ -118,6 +142,7 @@ function convertCopperPolygon({
     {
       type: "pcb_copper_pour",
       pcb_copper_pour_id: `pcb_copper_pour_altium_polygon_${polygonIndex}`,
+      ...(sourceNetId ? { source_net_id: sourceNetId } : {}),
       covered_with_solder_mask: true,
       layer,
       shape: "polygon",
@@ -129,9 +154,11 @@ function convertCopperPolygon({
 function convertCopperFill({
   record,
   recordIndex,
+  sourceNetId,
 }: {
   record: AltiumFillRecord
   recordIndex: number
+  sourceNetId: string | undefined
 }): PcbCopperPour[] {
   const layer = mapAltiumCopperLayer(record.layer)
   if (!layer || !record.bounds) return []
@@ -144,6 +171,7 @@ function convertCopperFill({
     {
       type: "pcb_copper_pour",
       pcb_copper_pour_id: `pcb_copper_pour_altium_fill_${recordIndex}`,
+      ...(sourceNetId ? { source_net_id: sourceNetId } : {}),
       covered_with_solder_mask: true,
       layer,
       shape: "rect",

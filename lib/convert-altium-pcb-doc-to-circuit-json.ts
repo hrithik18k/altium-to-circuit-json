@@ -35,6 +35,8 @@ import type {
   PcbSmtPad,
   PcbTrace,
   PcbVia,
+  SourceNet,
+  SourceTrace,
 } from "circuit-json"
 import { convertAltiumCopperAreas } from "./pcb/convert-altium-copper-areas"
 import {
@@ -80,6 +82,9 @@ export function convertAltiumPcbDocToCircuitJson(
   options: ConvertAltiumPcbDocOptions = {},
 ): AnyCircuitElement[] {
   const elements: AnyCircuitElement[] = []
+  const netContext = createPcbNetContext(document)
+
+  elements.push(...netContext.elements)
 
   if (options.includeBoardOutline !== false) {
     elements.push(createBoard(document))
@@ -127,7 +132,11 @@ export function convertAltiumPcbDocToCircuitJson(
   }
 
   if (options.includeCopperAreas !== false) {
-    elements.push(...convertAltiumCopperAreas(document))
+    elements.push(
+      ...convertAltiumCopperAreas(document, {
+        getSourceNetId: netContext.getSourceNetId,
+      }),
+    )
   }
 
   for (const [index, record] of document.records.entries()) {
@@ -167,14 +176,14 @@ export function convertAltiumPcbDocToCircuitJson(
         const line = convertSilkscreenLine(record, index)
         if (line) elements.push(line)
       } else if (options.includeTraces !== false) {
-        const trace = convertTrack(record, index)
+        const trace = convertTrack(record, index, netContext)
         if (trace) elements.push(trace)
       }
       continue
     }
 
     if (record instanceof AltiumViaRecord && options.includeVias !== false) {
-      const via = convertVia(record, index)
+      const via = convertVia(record, index, netContext)
       if (via) elements.push(via)
       continue
     }
@@ -186,7 +195,7 @@ export function convertAltiumPcbDocToCircuitJson(
         const path = convertSilkscreenArc(record, index)
         if (path) elements.push(path)
       } else if (options.includeTraces !== false) {
-        const trace = convertArcTrack(record, index)
+        const trace = convertArcTrack(record, index, netContext)
         if (trace) elements.push(trace)
       }
       continue
@@ -532,9 +541,63 @@ function getFallbackPcbBounds(records: AltiumRecord[]): {
   return getAltiumBounds(points) ?? { minX: 0, minY: 0, maxX: 1000, maxY: 800 }
 }
 
+interface PcbNetContext {
+  elements: Array<SourceNet | SourceTrace>
+  getSourceNetId: (record: AltiumRecord) => string | undefined
+  getSourceTraceId: (record: AltiumRecord) => string | undefined
+}
+
+function createPcbNetContext(document: AltiumPcbDocument): PcbNetContext {
+  const sourceNetIdByAltiumNet = new Map(
+    document.nets.map((net, index) => [net, `source_net_altium_pcb_${index}`]),
+  )
+  const sourceTraceIdByAltiumNet = new Map(
+    document.nets.map((net, index) => [
+      net,
+      `source_trace_altium_pcb_${index}`,
+    ]),
+  )
+  const elements = document.nets.flatMap((net, index) => {
+    const name = net.name?.trim() || `Net ${index + 1}`
+    const sourceNetId = sourceNetIdByAltiumNet.get(net)
+    const sourceTraceId = sourceTraceIdByAltiumNet.get(net)
+    if (!sourceNetId || !sourceTraceId) return []
+
+    return [
+      {
+        type: "source_net",
+        source_net_id: sourceNetId,
+        name,
+        member_source_group_ids: [],
+      } satisfies SourceNet,
+      {
+        type: "source_trace",
+        source_trace_id: sourceTraceId,
+        connected_source_port_ids: [],
+        connected_source_net_ids: [sourceNetId],
+        name,
+        display_name: name,
+      } satisfies SourceTrace,
+    ]
+  })
+
+  return {
+    elements,
+    getSourceNetId: (record) => {
+      const net = document.getNetForRecord(record)
+      return net ? sourceNetIdByAltiumNet.get(net) : undefined
+    },
+    getSourceTraceId: (record) => {
+      const net = document.getNetForRecord(record)
+      return net ? sourceTraceIdByAltiumNet.get(net) : undefined
+    },
+  }
+}
+
 function convertTrack(
   record: AltiumTrackRecord,
   index: number,
+  netContext: PcbNetContext,
 ): PcbTrace | undefined {
   const start = record.start
   const end = record.end
@@ -544,6 +607,9 @@ function convertTrack(
   return {
     type: "pcb_trace",
     pcb_trace_id: `pcb_trace_altium_${index}`,
+    ...(netContext.getSourceTraceId(record)
+      ? { source_trace_id: netContext.getSourceTraceId(record) }
+      : {}),
     should_round_corners: true,
     route: [
       { route_type: "wire", ...toMillimeterPoint(start), width, layer },
@@ -555,6 +621,7 @@ function convertTrack(
 function convertArcTrack(
   record: AltiumArcRecord,
   index: number,
+  netContext: PcbNetContext,
 ): PcbTrace | undefined {
   if (!record.center || !record.radiusMils) return undefined
   const layer = mapAltiumCopperLayer(record.layer)
@@ -570,6 +637,9 @@ function convertArcTrack(
   return {
     type: "pcb_trace",
     pcb_trace_id: `pcb_trace_altium_arc_${index}`,
+    ...(netContext.getSourceTraceId(record)
+      ? { source_trace_id: netContext.getSourceTraceId(record) }
+      : {}),
     should_round_corners: true,
     route: points.map((point) => ({
       route_type: "wire",
@@ -609,6 +679,7 @@ function convertCopperText(
 function convertVia(
   record: AltiumViaRecord,
   index: number,
+  netContext: PcbNetContext,
 ): PcbVia | undefined {
   if (!record.position) return undefined
   const startLayer = mapAltiumCopperLayer(record.startLayer) ?? "top"
@@ -618,6 +689,12 @@ function convertVia(
   return {
     type: "pcb_via",
     pcb_via_id: `pcb_via_altium_${index}`,
+    ...(netContext.getSourceNetId(record)
+      ? { source_net_id: netContext.getSourceNetId(record) }
+      : {}),
+    ...(netContext.getSourceTraceId(record)
+      ? { source_trace_id: netContext.getSourceTraceId(record) }
+      : {}),
     ...toMillimeterPoint(record.position),
     outer_diameter: outerDiameter,
     hole_diameter: milsToMillimeters(
