@@ -66,7 +66,10 @@ export async function createOpenSourcePcbComparison({
         : undefined,
     width: 800,
   })
-  const circuitJsonSvg = convertCircuitJsonToPcbSvg(circuitJson, {
+  const pcbElements = circuitJson.filter((element) =>
+    element.type.startsWith("pcb_"),
+  )
+  const circuitJsonSvg = convertCircuitJsonToPcbSvg(pcbElements, {
     matchBoardAspectRatio: true,
     viewportTarget: focusOnBoard
       ? { pcb_board_id: board.pcb_board_id }
