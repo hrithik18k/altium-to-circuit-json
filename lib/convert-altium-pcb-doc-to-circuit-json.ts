@@ -711,6 +711,17 @@ function createPcbPadContext(
   if (options.includePads !== false) {
     for (const [recordIndex, record] of document.records.entries()) {
       if (!(record instanceof AltiumPadRecord)) continue
+      const netIndex = record.netIndex
+      if (
+        netIndex === undefined ||
+        netIndex < 0 ||
+        netIndex >= document.nets.length
+      ) {
+        continue
+      }
+      const net = document.nets[netIndex]
+      if (!net) continue
+
       const position = record.position
       const layers = getPadCopperLayers(record)
       if (!position || layers.length === 0 || !getAltiumPadGeometry(record)) {
@@ -767,13 +778,9 @@ function createPcbPadContext(
         ...(pcbComponentId ? { pcb_component_id: pcbComponentId } : {}),
       })
 
-      const net = document.getNetForRecord(record)
-      if (net) {
-        const sourcePortIds =
-          sourcePortIdSetsByNet.get(net) ?? new Set<string>()
-        sourcePortIds.add(sourcePortId)
-        sourcePortIdSetsByNet.set(net, sourcePortIds)
-      }
+      const sourcePortIds = sourcePortIdSetsByNet.get(net) ?? new Set<string>()
+      sourcePortIds.add(sourcePortId)
+      sourcePortIdSetsByNet.set(net, sourcePortIds)
     }
   }
 
