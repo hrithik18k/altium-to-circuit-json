@@ -1,0 +1,42 @@
+diff --git a/index.ts b/index.ts
+index 658a625ef30f188a9e434676e6d203a2ec1d81e6..5b3b80705a1d9b9817b459c3748ea3db8e9eb879 100644
+--- a/index.ts
++++ b/index.ts
+@@ -41,6 +41,22 @@ async function toMatchSvgSnapshot(
+ 
+   const existingSnapshot = fs.readFileSync(filePath, "utf-8")
+ 
++  if (received === existingSnapshot) {
++    return {
++      message: () => "Snapshot matches",
++      pass: true,
++    }
++  }
++
++  if (updateSnapshot) {
++    console.log("Updating snapshot at", filePath)
++    fs.writeFileSync(filePath, received)
++    return {
++      message: () => `Snapshot updated at ${filePath}`,
++      pass: true,
++    }
++  }
++
+   const result: any = await looksSame(
+     Buffer.from(received),
+     Buffer.from(existingSnapshot),
+@@ -129,6 +145,14 @@ async function toMatchMultipleSvgSnapshots(
+ 
+     const existingSnapshot = fs.readFileSync(filePath, "utf-8")
+ 
++    if (received[index] === existingSnapshot) {
++      passed.push({
++        message: `Snapshot ${svgName} matches`,
++        pass: true,
++      })
++      continue
++    }
++
+     const result: any = await looksSame(
+       Buffer.from(received[index] as any),
+       Buffer.from(existingSnapshot),

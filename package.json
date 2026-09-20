@@ -75,5 +75,8 @@
   },
   "overrides": {
     "sharp": "^0.35.3"
+  },
+  "patchedDependencies": {
+    "bun-match-svg@0.0.15": "patches/bun-match-svg@0.0.15.patch"
   }
 }
