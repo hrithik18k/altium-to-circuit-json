@@ -10,7 +10,7 @@ test("imports Altium linear dimensions as fabrication-note dimensions", () => {
   const document = parseAltiumPcbDoc(
     [
       "|RECORD=Board|KIND0=0|VX0=0mil|VY0=0mil|KIND1=0|VX1=500mil|VY1=0mil|KIND2=0|VX2=500mil|VY2=500mil|KIND3=0|VX3=0mil|VY3=500mil|KIND4=0|VX4=0mil|VY4=0mil",
-      "|RECORD=Dimension|LAYER=MECHANICAL1|REFERENCES_COUNT=2|REFERENCE0POINTX=100mil|REFERENCE0POINTY=100mil|REFERENCE1POINTX=400mil|REFERENCE1POINTY=100mil|X1=100mil|Y1=200mil|TEXTFORMAT=10mil|TEXTDIMENSIONUNIT=MILLIMETERS|TEXTPRECISION=2|TEXTHEIGHT=40mil|ARROWSIZE=20mil",
+      "|RECORD=Dimension|LAYER=MECHANICAL1|REFERENCES_COUNT=2|REFERENCE0POINTX=100mil|REFERENCE0POINTY=100mil|REFERENCE1POINTX=400mil|REFERENCE1POINTY=100mil|X1=100mil|Y1=200mil|TEXTFORMAT=10mil|TEXTDIMENSIONUNIT=MILLIMETERS|TEXTPRECISION=2|TEXTPREFIX=|TEXTSUFFIX=|TEXTHEIGHT=40mil|ARROWSIZE=20mil",
     ].join("\n"),
   )
 
@@ -25,6 +25,22 @@ test("imports Altium linear dimensions as fabrication-note dimensions", () => {
   expect(dimensions[0]?.offset_direction?.x).toBeCloseTo(0)
   expect(dimensions[0]?.offset_direction?.y).toBeCloseTo(1)
   expect(dimensions[0]?.arrow_size).toBeCloseTo(0.508)
+})
+
+test("preserves non-empty custom dimension suffixes", () => {
+  const document = parseAltiumPcbDoc(
+    [
+      "|RECORD=Board|KIND0=0|VX0=0mil|VY0=0mil|KIND1=0|VX1=500mil|VY1=0mil|KIND2=0|VX2=500mil|VY2=500mil|KIND3=0|VX3=0mil|VY3=500mil|KIND4=0|VX4=0mil|VY4=0mil",
+      "|RECORD=Dimension|LAYER=MECHANICAL1|REFERENCES_COUNT=2|REFERENCE0POINTX=100mil|REFERENCE0POINTY=100mil|REFERENCE1POINTX=400mil|REFERENCE1POINTY=100mil|X1=100mil|Y1=200mil|TEXTFORMAT=10mil|TEXTDIMENSIONUNIT=MILS|TEXTPRECISION=1|TEXTPREFIX=~|TEXTSUFFIX= nominal",
+    ].join("\n"),
+  )
+
+  const dimension = convertAltiumPcbDocToCircuitJson(document).find(
+    (element): element is PcbFabricationNoteDimension =>
+      element.type === "pcb_fabrication_note_dimension",
+  )
+
+  expect(dimension?.text).toBe("~300.0 nominal")
 })
 
 test("imports exploded EasyEDA dimensions as fabrication-note paths", () => {

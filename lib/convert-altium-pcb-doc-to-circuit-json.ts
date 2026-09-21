@@ -28,6 +28,7 @@ import type {
   PcbCutout,
   PcbFabricationNoteDimension,
   PcbFabricationNotePath,
+  PcbFabricationNoteText,
   PcbHole,
   PcbPlatedHole,
   PcbSilkscreenGraphic,
@@ -53,6 +54,7 @@ import { stitchConnectedAltiumPaths } from "./pcb/stitch-connected-paths"
 
 const MILS_TO_MILLIMETERS = 0.0254
 const ALTIUM_SLOT_HOLE_TYPE = 2
+const FABRICATION_NOTE_COLOR = "#ec4899"
 const BOARD_ID = "pcb_board_altium"
 const BOARD_GRAPHICS_COMPONENT_ID = "pcb_component_altium_board_graphics"
 const ALTIUM_TEXT_ANCHORS: readonly NinePointAnchor[] = [
@@ -233,6 +235,15 @@ export function convertAltiumPcbDocToCircuitJson(
 
     if (record instanceof AltiumTextRecord) {
       if (isCourtyardLayer(record.layer)) continue
+      if (isMechanicalLayer(record.layer)) {
+        const text = convertMechanicalText({
+          document,
+          record,
+          recordIndex: index,
+        })
+        if (text) elements.push(text)
+        continue
+      }
       if (isOverlayLayer(record.layer)) {
         if (options.includeSilkscreen === false) continue
         const text = convertSilkscreenText(record, index)
@@ -311,7 +322,7 @@ function convertFabricationNotePath(
     layer: mapCourtyardLayer(getLayer(record)),
     route: route.map(toMillimeterPoint),
     stroke_width: milsToMillimeters(record.widthMils ?? 4),
-    color: "#ec4899",
+    color: FABRICATION_NOTE_COLOR,
   }
 }
 
@@ -447,7 +458,7 @@ function convertDimension(
     font: "tscircuit2024",
     font_size: milsToMillimeters(record.textHeightMils ?? 50),
     arrow_size: milsToMillimeters(getMeasurement(record, "ARROWSIZE") ?? 40),
-    color: "#ec4899",
+    color: FABRICATION_NOTE_COLOR,
   }
 }
 
@@ -479,7 +490,8 @@ function getDimensionText(
     amount /= 1000
     unitLabel = "in"
   }
-  return `${record.prefix ?? ""}${amount.toFixed(precision)}${record.suffix ?? ` ${unitLabel}`}`
+  const suffix = record.suffix?.trim() ? record.suffix : ` ${unitLabel}`
+  return `${record.prefix ?? ""}${amount.toFixed(precision)}${suffix}`
 }
 
 function mapMechanicalLayer(layer: string | undefined): "top" | "bottom" {
@@ -1186,6 +1198,57 @@ function convertSilkscreenText(
   }
 }
 
+function convertMechanicalText({
+  document,
+  record,
+  recordIndex,
+}: {
+  document: AltiumPcbDocument
+  record: AltiumTextRecord
+  recordIndex: number
+}): PcbFabricationNoteText | undefined {
+  const componentIndex = record.componentIndex
+  const component = document.getComponentForRecord(record)
+  if (!record.position || componentIndex === undefined || !component) {
+    return undefined
+  }
+
+  const sourceText =
+    decodeAltiumWideString(record.getDecoded("WIDESTRING")) || record.text
+  if (!sourceText) return undefined
+
+  const normalizedText = sourceText.trim().toUpperCase()
+  const isDesignator = normalizedText === ".DESIGNATOR"
+  const isComment = normalizedText === ".COMMENT"
+  if (isDesignator && component.getBoolean("NAMEON") === false) {
+    return undefined
+  }
+  if (isComment && component.getBoolean("COMMENTON") === false) {
+    return undefined
+  }
+
+  const text = isDesignator
+    ? component.designator
+    : isComment
+      ? component.comment
+      : sourceText
+  if (!text) return undefined
+
+  return {
+    type: "pcb_fabrication_note_text",
+    pcb_fabrication_note_text_id: `pcb_fabrication_note_text_altium_${recordIndex}`,
+    pcb_component_id: componentId(componentIndex),
+    text,
+    font: "tscircuit2024",
+    font_size: milsToMillimeters(record.heightMils ?? 30),
+    anchor_position: toMillimeterPoint(record.position),
+    anchor_alignment: mapFabricationTextAnchor(record.justification),
+    ccw_rotation: record.rotation,
+    layer: component.side === "bottom" ? "bottom" : "top",
+    color: FABRICATION_NOTE_COLOR,
+  }
+}
+
 function decodeAltiumWideString(raw: string | undefined): string {
   if (!raw) return ""
   if (!/^\d+(?:,\d+)*$/u.test(raw)) return raw
@@ -1216,6 +1279,22 @@ function mapTextAnchor(justification: string | undefined): NinePointAnchor {
   if (normalized?.includes("RIGHT")) return "bottom_right"
   if (normalized?.includes("LEFT")) return "bottom_left"
   return "center"
+}
+
+function mapFabricationTextAnchor(
+  justification: string | undefined,
+): PcbFabricationNoteText["anchor_alignment"] {
+  const anchor = mapTextAnchor(justification)
+  return anchor === "top_left" ||
+    anchor === "top_right" ||
+    anchor === "bottom_left" ||
+    anchor === "bottom_right"
+    ? anchor
+    : "center"
+}
+
+function isMechanicalLayer(layer: string | undefined): boolean {
+  return normalizeLayer(layer).startsWith("MECHANICAL")
 }
 
 function isOverlayLayer(layer: string | undefined): boolean {
