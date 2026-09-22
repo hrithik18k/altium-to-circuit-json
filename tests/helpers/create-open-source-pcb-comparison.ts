@@ -7,7 +7,7 @@ import {
 } from "altiumts"
 import type { AnyCircuitElement } from "circuit-json"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
-import { convertAltiumToCircuitJson } from "../../lib"
+import { convertAltiumPcbDocToCircuitJson } from "../../lib"
 import { readReferenceBytes } from "./read-reference"
 import { stackAltiumAndCircuitJsonSvgs } from "./stack-svg-comparison"
 
@@ -36,7 +36,7 @@ export async function createOpenSourcePcbComparison({
       `Expected ${filename} to contain an Altium PCB document, got ${document.type}`,
     )
   }
-  const circuitJson = convertAltiumToCircuitJson(source, { sourceType: "pcb" })
+  const circuitJson = convertAltiumPcbDocToCircuitJson(document)
   const board = circuitJson.find((element) => element.type === "pcb_board")
   if (!board) throw new Error(`${filename} did not produce a PCB board`)
 
@@ -66,7 +66,10 @@ export async function createOpenSourcePcbComparison({
         : undefined,
     width: 800,
   })
-  const circuitJsonSvg = convertCircuitJsonToPcbSvg(circuitJson, {
+  const pcbElements = circuitJson.filter((element) =>
+    element.type.startsWith("pcb_"),
+  )
+  const circuitJsonSvg = convertCircuitJsonToPcbSvg(pcbElements, {
     matchBoardAspectRatio: true,
     viewportTarget: focusOnBoard
       ? { pcb_board_id: board.pcb_board_id }
