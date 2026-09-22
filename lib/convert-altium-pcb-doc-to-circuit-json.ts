@@ -1,5 +1,6 @@
 import {
   AltiumArcRecord,
+  type AltiumComponentRecord,
   AltiumDimensionRecord,
   AltiumFillRecord,
   AltiumPadRecord,
@@ -705,7 +706,11 @@ function createPcbPadContext(
     AltiumPadRecord,
     { pcb_component_id?: string; pcb_port_id: string }
   >()
-  const sourcePortIdByLogicalPin = new Map<string, string>()
+  const sourcePortIdsByComponent = new Map<
+    AltiumComponentRecord,
+    Map<string, string>
+  >()
+  const sourcePortIdsByStandalonePad = new Map<AltiumPadRecord, string>()
   const sourcePortIdSetsByNet = new Map<AltiumRecord, Set<string>>()
 
   if (options.includePads !== false) {
@@ -738,14 +743,20 @@ function createPcbPadContext(
         component?.position !== undefined &&
         options.includeComponents !== false
       const padName = record.name?.trim() || `Pad ${recordIndex + 1}`
-      const logicalPinKey =
-        componentIndex === undefined
-          ? `record:${recordIndex}`
-          : `component:${componentIndex}:pad:${padName}`
-      let sourcePortId = sourcePortIdByLogicalPin.get(logicalPinKey)
+      const componentSourcePortIds = component
+        ? (sourcePortIdsByComponent.get(component) ?? new Map<string, string>())
+        : undefined
+      let sourcePortId = componentSourcePortIds
+        ? componentSourcePortIds.get(padName)
+        : sourcePortIdsByStandalonePad.get(record)
       if (!sourcePortId) {
         sourcePortId = `source_port_altium_pcb_${recordIndex}`
-        sourcePortIdByLogicalPin.set(logicalPinKey, sourcePortId)
+        if (component && componentSourcePortIds) {
+          componentSourcePortIds.set(padName, sourcePortId)
+          sourcePortIdsByComponent.set(component, componentSourcePortIds)
+        } else {
+          sourcePortIdsByStandalonePad.set(record, sourcePortId)
+        }
         const pinNumber = Number(padName)
         elements.push({
           type: "source_port",
