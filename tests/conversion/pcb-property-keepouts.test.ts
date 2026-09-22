@@ -25,12 +25,14 @@ test("imports copper-layer KEEPOUT primitives without emitting copper", () => {
 
   expect(keepouts).toMatchObject([
     {
+      pcb_keepout_id: "pcb_keepout_1",
       shape: "circle",
       center: { x: 2.54, y: 2.54 },
       radius: 0.762,
       layers: ["top"],
     },
     {
+      pcb_keepout_id: "pcb_keepout_2",
       shape: "rect",
       center: { x: 6.35, y: 5.715 },
       width: 2.54,

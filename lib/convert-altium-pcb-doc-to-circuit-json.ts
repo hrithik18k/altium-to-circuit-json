@@ -343,7 +343,7 @@ function convertCircularKeepout({
 
   return {
     type: "pcb_keepout",
-    pcb_keepout_id: `pcb_keepout_altium_arc_${recordIndex}`,
+    pcb_keepout_id: `pcb_keepout_${recordIndex}`,
     shape: "circle",
     center: toMillimeterPoint(center),
     radius: milsToMillimeters(radiusMils + (record.widthMils ?? 0) / 2),
@@ -381,7 +381,7 @@ function convertRectangularKeepout({
 
   return {
     type: "pcb_keepout",
-    pcb_keepout_id: `pcb_keepout_altium_fill_${recordIndex}`,
+    pcb_keepout_id: `pcb_keepout_${recordIndex}`,
     shape: "rect",
     center: {
       x: milsToMillimeters((bounds.minX + bounds.maxX) / 2),
