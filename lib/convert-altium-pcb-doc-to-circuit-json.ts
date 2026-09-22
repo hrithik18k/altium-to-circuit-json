@@ -145,9 +145,11 @@ export function convertAltiumPcbDocToCircuitJson(
   }
 
   for (const [index, record] of document.records.entries()) {
+    const recordIsKeepout = isAltiumKeepout(record)
+
     if (
       record instanceof AltiumArcRecord &&
-      isAltiumKeepout(record) &&
+      recordIsKeepout &&
       options.includeKeepouts !== false
     ) {
       const keepout = convertCircularKeepout({
@@ -161,7 +163,7 @@ export function convertAltiumPcbDocToCircuitJson(
 
     if (
       record instanceof AltiumFillRecord &&
-      isAltiumKeepout(record) &&
+      recordIsKeepout &&
       options.includeKeepouts !== false
     ) {
       const keepout = convertRectangularKeepout({
@@ -175,7 +177,7 @@ export function convertAltiumPcbDocToCircuitJson(
 
     // Circuit JSON cannot represent stroked track or partial-arc keepouts yet,
     // but they must never be emitted as conductive copper.
-    if (isAltiumKeepout(record)) continue
+    if (recordIsKeepout) continue
 
     if (
       record instanceof AltiumDimensionRecord &&
