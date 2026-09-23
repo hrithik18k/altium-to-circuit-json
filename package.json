@@ -1,6 +1,6 @@
 {
   "name": "altium-to-circuit-json",
-  "version": "0.0.40",
+  "version": "0.0.47",
   "description": "Convert Altium schematic and PCB documents into Circuit JSON",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,6 +13,9 @@
   },
   "files": [
     "dist"
+  ],
+  "trustedDependencies": [
+    "altiumts"
   ],
   "publishConfig": {
     "access": "public"
@@ -43,10 +46,11 @@
     "vercel-build": "bun run build:site"
   },
   "dependencies": {
-    "altiumts": "^0.0.74",
+    "altiumts": "github:tscircuit/altiumts#902194b1aa4627f229f82660b06967feb870e334",
     "circuit-json": "^0.0.475",
     "format-si-unit": "^0.0.11",
-    "schematic-symbols": "^0.0.238"
+    "schematic-symbols": "^0.0.238",
+    "transformation-matrix": "^2.16.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.6",

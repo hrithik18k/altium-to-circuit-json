@@ -18,7 +18,8 @@ test.each([
   const traces = circuitJson.filter((element) => element.type === "pcb_trace")
 
   expect(traces).toHaveLength(1)
-  const trace = traces[0]!
+  const trace = traces[0]
+  if (!trace) throw new Error("Expected one PCB trace")
   expect(any_circuit_element.safeParse(trace).success).toBe(true)
   expect(trace.route.length).toBeGreaterThan(2)
   for (const point of trace.route) {
@@ -31,8 +32,13 @@ test.each([
     expect(point.x).toBeGreaterThan(3.79)
   }
   const wirePoints = trace.route.filter((point) => point.route_type === "wire")
-  expect(wirePoints[0]!.y).toBeCloseTo(4.859466814)
-  expect(wirePoints.at(-1)!.y).toBeCloseTo(5.300533186)
+  const firstWirePoint = wirePoints[0]
+  const lastWirePoint = wirePoints.at(-1)
+  if (!firstWirePoint || !lastWirePoint) {
+    throw new Error("Expected at least one wire point")
+  }
+  expect(firstWirePoint.y).toBeCloseTo(4.859466814)
+  expect(lastWirePoint.y).toBeCloseTo(5.300533186)
 })
 
 test("preserves copper text alongside arcs and independent visibility options", () => {

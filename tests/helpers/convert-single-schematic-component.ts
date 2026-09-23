@@ -4,12 +4,12 @@ import { convertAltiumSchDocToCircuitJson } from "../../lib"
 
 export function convertSingleSchematicComponent({
   comment,
-  componentValue,
+  displayText,
   designator,
   libraryReference,
 }: {
   comment: string
-  componentValue: string
+  displayText: string
   designator: string
   libraryReference: string
 }): AnyCircuitElement[] {
@@ -18,7 +18,7 @@ export function convertSingleSchematicComponent({
     `|RECORD=1|LibReference=${libraryReference}|Designator=${designator}|PartCount=1|DisplayModeCount=1|IndexInSheet=1|OwnerPartId=-1|Location.X=50|Location.Y=50|Orientation=0|CurrentPartId=1|AllPinCount=2`,
     "|RECORD=2|OwnerIndex=1|OwnerPartId=1|Location.X=40|Location.Y=50|Name=1|Designator=1|PinLength=10|Electrical=3|Orientation=2|Hidden=False",
     "|RECORD=2|OwnerIndex=1|OwnerPartId=1|Location.X=60|Location.Y=50|Name=2|Designator=2|PinLength=10|Electrical=3|Orientation=0|Hidden=False",
-    `|RECORD=41|OwnerIndex=1|OwnerPartId=-1|Name=Value|Text=${componentValue}`,
+    `|RECORD=41|OwnerIndex=1|OwnerPartId=-1|Name=Value|Text=${displayText}`,
     `|RECORD=41|OwnerIndex=1|OwnerPartId=-1|Name=Comment|Text=${comment}`,
   ].join("\n")
 

@@ -90,6 +90,7 @@ export function App() {
           viewer.
         </p>
         <p className="privacy-note">Your files stay in this browser.</p>
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: The native file input and button provide keyboard access; this wrapper only adds drag-and-drop. */}
         <div
           className={`dropzone${dragging ? " dragging" : ""}`}
           onDragOver={(e) => {

@@ -277,8 +277,11 @@ h2 {
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion preferences must override authored animation rules. */
     scroll-behavior: auto !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion preferences must override authored animation rules. */
     transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion preferences must override authored animation rules. */
     animation-duration: 0.01ms !important;
   }
 }

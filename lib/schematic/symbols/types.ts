@@ -1,0 +1,11 @@
+export type ComponentClassification =
+  | "capacitor"
+  | "crystal"
+  | "diode"
+  | "ferrite_bead"
+  | "inductor"
+  | "led"
+  | "mosfet"
+  | "resistor"
+  | "testpoint"
+  | "unknown"
