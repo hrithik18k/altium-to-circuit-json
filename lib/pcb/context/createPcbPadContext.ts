@@ -5,11 +5,11 @@ import {
   type AltiumRecord,
   getAltiumPcbPadGeometry,
 } from "altiumts"
-import type { LayerRef } from "circuit-json"
 import { toMillimeterPoint } from "../geometry"
 import { getPcbComponentId } from "../identifiers"
-import { mapAltiumCopperLayer } from "../layers"
 import type { ConvertAltiumPcbDocOptions, PcbPadContext } from "../model"
+import { getPadCopperLayers } from "./getPadCopperLayers"
+import { getSourceComponentId } from "./getSourceComponentId"
 
 export function createPcbPadContext({
   document,
@@ -146,17 +146,4 @@ export function createPcbPadContext({
     ),
     getPadRefs: (record) => padRefsByRecord.get(record) ?? {},
   }
-}
-
-function getSourceComponentId(index: number): string {
-  return `source_component_altium_${index}`
-}
-
-function getPadCopperLayers(record: AltiumPadRecord): LayerRef[] {
-  const holeDiameter = record.holeSizeMils ?? 0
-  if (record.behavior === "through-hole" || holeDiameter > 0) {
-    return record.plated === false ? [] : ["top", "bottom"]
-  }
-  const layer = mapAltiumCopperLayer(record.layer)
-  return layer ? [layer] : []
 }
