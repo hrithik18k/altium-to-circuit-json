@@ -5,7 +5,7 @@ import { convertSingleSchematicComponent } from "../helpers/convert-single-schem
 test("keeps a nonnumeric passive value as a valid generic component", () => {
   const circuitJson = convertSingleSchematicComponent({
     comment: "L78M08 regulator",
-    componentValue: "L78M08CDT-TR",
+    displayText: "L78M08CDT-TR",
     designator: "L1",
     libraryReference: "L78M08",
   })

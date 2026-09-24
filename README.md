@@ -39,6 +39,24 @@ The public conversion functions are:
 - `convertAltiumPcbDocToCircuitJson(document, options)` for PCB documents.
 - `convertAltiumSchDocToCircuitJson(document, options)` for schematic documents.
 
+For callers that need progress visibility, debugging, or custom orchestration,
+the same conversion is exposed as a staged converter:
+
+```ts
+import { AltiumToCircuitJsonConverter } from "altium-to-circuit-json"
+
+const converter = new AltiumToCircuitJsonConverter(bytes)
+while (!converter.finished) {
+  console.log(converter.currentStage?.constructor.name)
+  converter.step()
+}
+const circuitJson = converter.getOutput()
+```
+
+Each stage has the standard converter contract: `step()`,
+`runUntilFinished()`, `finished`, and `getOutput()`. The parser boundary stays
+in `altiumts`; conversion stages consume typed Altium documents and records.
+
 ## Current coverage
 
 PCB conversion currently emits:

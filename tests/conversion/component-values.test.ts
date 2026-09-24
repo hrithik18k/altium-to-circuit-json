@@ -3,13 +3,13 @@ import { convertSingleSchematicComponent } from "../helpers/convert-single-schem
 
 test("uses Altium Value parameter instead of manufacturer part number", () => {
   const capacitor = convertSingleSchematicComponent({
-    componentValue: "10uF",
+    displayText: "10uF",
     designator: "C1",
     libraryReference: "Capacitor",
     comment: "UMK325AB7106KMHT",
   }).find((element) => element.type === "source_component")
   const resistor = convertSingleSchematicComponent({
-    componentValue: "1.0k",
+    displayText: "1.0k",
     designator: "R1",
     libraryReference: "Resistor",
     comment: "RC0603FR-071KL",
