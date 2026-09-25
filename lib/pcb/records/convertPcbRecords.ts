@@ -9,10 +9,9 @@ import {
   AltiumViaRecord,
 } from "altiumts"
 import {
-  convertPcbCircularKeepout,
   convertPcbDimension,
   convertPcbFabricationNotePath,
-  convertPcbRectangularKeepout,
+  convertPcbKeepout,
   isAltiumKeepout,
   isExplodedPcbDimensionGraphic,
 } from "../annotations"
@@ -39,35 +38,13 @@ export function convertPcbRecords(context: PcbConversionContext): void {
   const { document, elements, netContext, options } = context
   for (const [recordIndex, record] of document.records.entries()) {
     const recordIsKeepout = isAltiumKeepout(record)
-    if (
-      record instanceof AltiumArcRecord &&
-      recordIsKeepout &&
-      options.includeKeepouts !== false
-    ) {
-      const keepout = convertPcbCircularKeepout({
-        document,
-        record,
-        recordIndex,
-      })
-      if (keepout) elements.push(keepout)
+    if (recordIsKeepout) {
+      if (options.includeKeepouts !== false) {
+        const keepout = convertPcbKeepout({ document, record, recordIndex })
+        if (keepout) elements.push(keepout)
+      }
       continue
     }
-
-    if (
-      record instanceof AltiumFillRecord &&
-      recordIsKeepout &&
-      options.includeKeepouts !== false
-    ) {
-      const keepout = convertPcbRectangularKeepout({
-        document,
-        record,
-        recordIndex,
-      })
-      if (keepout) elements.push(keepout)
-      continue
-    }
-
-    if (recordIsKeepout) continue
 
     if (
       record instanceof AltiumDimensionRecord &&

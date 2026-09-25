@@ -1,6 +1,7 @@
 export * from "./convertPcbCircularKeepout"
 export * from "./convertPcbDimension"
 export * from "./convertPcbFabricationNotePath"
+export * from "./convertPcbKeepout"
 export * from "./convertPcbRectangularKeepout"
 export * from "./getCopperLayers"
 export * from "./getDimensionText"
