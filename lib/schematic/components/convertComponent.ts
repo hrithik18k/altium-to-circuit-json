@@ -1,4 +1,8 @@
-import { type AltiumSchComponentRecord, AltiumSchPinRecord } from "altiumts"
+import {
+  type AltiumSchComponentRecord,
+  AltiumSchLabelRecord,
+  AltiumSchPinRecord,
+} from "altiumts"
 import type { SchematicComponent } from "circuit-json"
 import { getBoundsCenter, scaleLength, scalePoint } from "../geometry"
 import {
@@ -8,6 +12,7 @@ import {
 import { addComponentFallbackText } from "./addComponentFallbackText"
 import { convertComponentPin } from "./convertComponentPin"
 import { convertOwnedComponentBody } from "./convertOwnedComponentBody"
+import { convertOwnedCustomComponentBody } from "./convertOwnedCustomComponentBody"
 import { convertOwnedSingleInputGateBody } from "./convertOwnedSingleInputGateBody"
 import { convertPinlessComponent } from "./convertPinlessComponent"
 import { createComponentPinEdgeElements } from "./createComponentPinEdgeElements"
@@ -78,10 +83,28 @@ export function convertComponent(
     visibleOwnedRecords,
     componentPorts.map(({ point }) => point),
   )
-  const symbolSelection = selectCircuitJsonSymbol({
+  let symbolSelection = selectCircuitJsonSymbol({
     ...identity,
     ports: componentPorts,
   })
+  // A manufacturer's library name may not encode capacitor polarity. Keep
+  // an explicitly marked source body so its curved plate and polarity mark
+  // remain attached to the original terminals, regardless of pin numbering.
+  const polarizedCapacitorBody =
+    symbolSelection?.name.startsWith("capacitor_") &&
+    !symbolSelection.name.startsWith("capacitor_polarized_") &&
+    visibleOwnedRecords.some(
+      (record) =>
+        record instanceof AltiumSchLabelRecord &&
+        !record.getBoolean("ISHIDDEN") &&
+        record.text?.trim() === "+",
+    )
+      ? convertOwnedCustomComponentBody(
+          { identity, records: visibleOwnedRecords },
+          context,
+        )
+      : undefined
+  if (polarizedCapacitorBody) symbolSelection = undefined
   const singleInputGateBody = symbolSelection
     ? undefined
     : convertOwnedSingleInputGateBody(
@@ -89,6 +112,7 @@ export function convertComponent(
         context,
       )
   const ownedComponentBody =
+    polarizedCapacitorBody ??
     singleInputGateBody ??
     (symbolSelection
       ? undefined
