@@ -51,10 +51,7 @@ export function convertOwnedComponentRecords(
         element.type === "schematic_line"
           ? {
               ...element,
-              stroke_width: Math.max(
-                scaleLength(1, renderingContext.scale),
-                0.05,
-              ),
+              stroke_width: scaleLength(1, renderingContext.scale),
             }
           : element
       return {
