@@ -2,11 +2,15 @@ import { expect, test } from "bun:test"
 import { parseAltiumSchDoc } from "altiumts"
 import { convertAltiumSchDocToCircuitJson } from "../../lib"
 
-function convertCapacitor(
-  marker: string,
+function convertCapacitor({
+  marker,
   includeBody = true,
   includeText = true,
-) {
+}: {
+  marker: string
+  includeBody?: boolean
+  includeText?: boolean
+}) {
   return convertAltiumSchDocToCircuitJson(
     parseAltiumSchDoc(
       [
@@ -34,7 +38,7 @@ const plus =
 test.each([true, false])(
   "preserves marked capacitor geometry with includeText=%s",
   (includeText) => {
-    const elements = convertCapacitor(plus, true, includeText)
+    const elements = convertCapacitor({ marker: plus, includeText })
     const component = elements.find((e) => e.type === "schematic_component")
     expect(component).toMatchObject({ is_box_with_pins: false })
     expect(component).not.toHaveProperty("symbol_name")
@@ -62,7 +66,7 @@ test.each([
 ])(
   "keeps the native capacitor without a visible body polarity mark: %s",
   (marker) => {
-    const component = convertCapacitor(marker).find(
+    const component = convertCapacitor({ marker }).find(
       (e) => e.type === "schematic_component",
     )
     expect(component?.symbol_name).toMatch(/^capacitor_(right|left|up|down)$/)
@@ -70,7 +74,7 @@ test.each([
 )
 
 test("keeps the native symbol when source body graphics are incomplete", () => {
-  const component = convertCapacitor(plus, false).find(
+  const component = convertCapacitor({ marker: plus, includeBody: false }).find(
     (e) => e.type === "schematic_component",
   )
   expect(component?.symbol_name).toMatch(/^capacitor_(right|left|up|down)$/)
