@@ -18,7 +18,7 @@ import { decodeMultilineText } from "./decodeMultilineText"
 import { estimateSchematicTextWidth } from "./estimateSchematicTextWidth"
 import { getFontFamily } from "./getFontFamily"
 import { getFontSize } from "./getFontSize"
-import { wrapSchematicText } from "./wrapSchematicText"
+import { layoutSchematicTextFrame } from "./layoutSchematicTextFrame"
 
 export function renderTextFrameRecord({
   record,
@@ -49,20 +49,19 @@ export function renderTextFrameRecord({
   const frameHeight = rectangle.maxY - rectangle.minY
   const availableWidth = Math.max(frameWidth - margin * 2, fontSize)
   const availableHeight = Math.max(frameHeight - margin * 2, fontSize)
-  const wrappedLines =
-    record.getBoolean("WORDWRAP") === false
-      ? text.split("\n")
-      : wrapSchematicText({
-          text,
-          maximumWidth: availableWidth,
-          fontSize,
-          fontFamily,
-        })
-  const lineHeight = fontSize
+  const layout = layoutSchematicTextFrame({
+    text,
+    maximumWidth: availableWidth,
+    maximumHeight: availableHeight,
+    fontSize,
+    fontFamily,
+    wordWrap: record.getBoolean("WORDWRAP") !== false,
+  })
+  const lineHeight = layout.fontSize
   const visibleLines =
     record.getBoolean("CLIPTORECT") === false
-      ? wrappedLines
-      : wrappedLines.slice(
+      ? layout.lines
+      : layout.lines.slice(
           0,
           Math.max(Math.ceil(availableHeight / lineHeight), 1),
         )
@@ -83,7 +82,7 @@ export function renderTextFrameRecord({
   const elements: AnyCircuitElement[] = visibleLines.map((line, lineIndex) => {
     const lineWidth = estimateSchematicTextWidth({
       text: line,
-      fontSize,
+      fontSize: layout.fontSize,
       fontFamily,
     })
     return createDirectText({
@@ -95,8 +94,8 @@ export function renderTextFrameRecord({
       },
       fontSize:
         lineWidth > availableWidth
-          ? (fontSize * availableWidth) / lineWidth
-          : fontSize,
+          ? (layout.fontSize * availableWidth) / lineWidth
+          : layout.fontSize,
       color: textColor,
       scale,
       ccwRotationDegrees: 0,

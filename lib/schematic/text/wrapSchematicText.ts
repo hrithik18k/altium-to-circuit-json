@@ -1,4 +1,5 @@
 import { estimateSchematicTextWidth } from "./estimateSchematicTextWidth"
+import { splitLongSchematicWord } from "./splitLongSchematicWord"
 
 export function wrapSchematicText({
   text,
@@ -21,7 +22,21 @@ export function wrapSchematicText({
     const lines: string[] = []
     let line = ""
     for (const word of paragraph.split(/\s+/u)) {
-      if (!line) line = word
+      if (
+        /^https?:\/\//u.test(word) &&
+        estimateSchematicTextWidth({ text: word, fontSize, fontFamily }) >
+          maximumWidth
+      ) {
+        if (line) lines.push(line)
+        const chunks = splitLongSchematicWord({
+          word,
+          maximumWidth,
+          fontSize,
+          fontFamily,
+        })
+        lines.push(...chunks.slice(0, -1))
+        line = chunks.at(-1) ?? ""
+      } else if (!line) line = word
       else if (
         estimateSchematicTextWidth({
           text: `${line} ${word}`,
