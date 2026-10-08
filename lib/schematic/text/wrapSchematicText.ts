@@ -21,33 +21,18 @@ export function wrapSchematicText({
     const lines: string[] = []
     let line = ""
     for (const word of paragraph.split(/\s+/u)) {
-      if (
+      if (!line) line = word
+      else if (
         estimateSchematicTextWidth({
-          text: line ? `${line} ${word}` : word,
+          text: `${line} ${word}`,
           fontSize,
           fontFamily,
         }) <= maximumWidth
       ) {
-        line = line ? `${line} ${word}` : word
-        continue
-      }
-      if (line) {
+        line = `${line} ${word}`
+      } else {
         lines.push(line)
-        line = ""
-      }
-      for (const character of word) {
-        if (
-          line &&
-          estimateSchematicTextWidth({
-            text: line + character,
-            fontSize,
-            fontFamily,
-          }) > maximumWidth
-        ) {
-          lines.push(line)
-          line = ""
-        }
-        line += character
+        line = word
       }
     }
     if (line) lines.push(line)

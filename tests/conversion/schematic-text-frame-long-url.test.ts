@@ -8,7 +8,7 @@ import { wrapSchematicText } from "../../lib/schematic/text/wrapSchematicText"
 import { TI_TMDS62LEVM_FIXTURE_NAME } from "../../scripts/references/reference-manifest"
 import { readReferenceBytes } from "../helpers/read-reference"
 
-test("wraps a URL token without losing characters or exceeding the frame width", () => {
+test("keeps a URL token intact for fitting within its frame", () => {
   const url = `https://example.com/${"long-segment-".repeat(18)}`
   const lines = wrapSchematicText({
     text: url,
@@ -16,20 +16,10 @@ test("wraps a URL token without losing characters or exceeding the frame width",
     fontSize: 10,
     fontFamily: "Arial",
   })
-  expect(lines.length).toBeGreaterThan(1)
-  expect(lines.join("")).toBe(url)
-  for (const line of lines) {
-    expect(
-      estimateSchematicTextWidth({
-        text: line,
-        fontSize: 10,
-        fontFamily: "Arial",
-      }),
-    ).toBeLessThanOrEqual(120)
-  }
+  expect(lines).toEqual([url])
 })
 
-test("keeps the TI sheet 04 final FAQ URL inside its text frame", async () => {
+test("fits the complete TI sheet 04 final FAQ URL on one row", async () => {
   const source = await readReferenceBytes(
     `${TI_TMDS62LEVM_FIXTURE_NAME}/04.SchDoc`,
   )
@@ -46,7 +36,8 @@ test("keeps the TI sheet 04 final FAQ URL inside its text frame", async () => {
   const fontId = frame.getCaseInsensitive("FONTID")
   const fontSize = Number(sheet?.getCaseInsensitive(`SIZE${fontId}`))
   const fontFamily = sheet?.getDecoded(`FONTNAME${fontId}`) ?? "Arial"
-  const lines = convertAltiumSchDocToCircuitJson(document).filter(
+  const elements = convertAltiumSchDocToCircuitJson(document)
+  const lines = elements.filter(
     (element): element is SchematicText =>
       element.type === "schematic_text" &&
       element.schematic_text_id.startsWith(
@@ -54,17 +45,22 @@ test("keeps the TI sheet 04 final FAQ URL inside its text frame", async () => {
       ),
   )
 
-  expect(lines.length).toBeGreaterThan(1)
-  expect(lines.map((line) => line.text).join("")).toBe(
-    frame.getDecoded("TEXT") ?? "",
+  const baseline = elements.find(
+    (element): element is SchematicText =>
+      element.type === "schematic_text" &&
+      element.schematic_text_id === "schematic_text_frame_line_altium_46_1",
   )
-  for (const line of lines) {
-    expect(
-      estimateSchematicTextWidth({
-        text: line.text,
-        fontSize,
-        fontFamily,
-      }),
-    ).toBeLessThanOrEqual(rectangle.maxX - rectangle.minX)
-  }
+  expect(lines).toHaveLength(1)
+  expect(lines[0]?.text).toBe(frame.getDecoded("TEXT"))
+  expect(baseline).toBeDefined()
+  expect(lines[0]?.font_size).toBeLessThan(baseline?.font_size ?? 0)
+  expect(
+    estimateSchematicTextWidth({
+      text: lines[0]?.text ?? "",
+      fontSize: lines[0]?.font_size ?? 0,
+      fontFamily,
+    }),
+  ).toBeLessThanOrEqual(
+    ((rectangle.maxX - rectangle.minX) * (baseline?.font_size ?? 0)) / fontSize,
+  )
 })
