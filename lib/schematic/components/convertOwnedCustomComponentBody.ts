@@ -53,6 +53,11 @@ export function convertOwnedCustomComponentBody(
       record instanceof AltiumSchPolygonRecord ||
       record instanceof AltiumSchPolylineRecord,
   ).length
+  const hasFilledPolygon = records.some(
+    (record) =>
+      record instanceof AltiumSchPolygonRecord &&
+      record.getBoolean("ISSOLID") === true,
+  )
   const hasCircularShape = records.some(
     (record) =>
       record instanceof AltiumSchEllipseRecord ||
@@ -74,11 +79,12 @@ export function convertOwnedCustomComponentBody(
   // its body. Keep the existing evidence threshold for other custom graphics.
   const hasSimpleCircularBody = hasCircularShape && !hasOtherBodyShape
   // A lone line or shape can be a decoration on an otherwise rectangular IC.
-  // Multiple primitive kinds are strong evidence that the primitives form the
-  // component body itself, even when it does not use every supported family.
+  // Multiple primitive kinds or a filled polygon with supporting strokes are
+  // evidence of a complete body rather than a lone decoration.
   if (
     !hasSimpleCircularBody &&
-    (bodyPrimitiveCount < 3 || bodyPrimitiveKinds.size < 2)
+    (bodyPrimitiveCount < 3 ||
+      (bodyPrimitiveKinds.size < 2 && !hasFilledPolygon))
   ) {
     return undefined
   }
