@@ -6,6 +6,7 @@ import {
 } from "../geometry"
 import type { ConvertedPort, SymbolPortAssignment } from "../model"
 import { compareConvertedPorts } from "./compareConvertedPorts"
+import { normalizeDiodeTerminalLabel } from "./normalizeDiodeTerminalLabel"
 import { normalizeFunctionalPortLabel } from "./normalizeFunctionalPortLabel"
 
 export function assignConvertedPortsToSymbolPorts({
@@ -17,6 +18,7 @@ export function assignConvertedPortsToSymbolPorts({
   symbol: SchSymbol
   options?: {
     allowFunctionalPortReuse?: boolean
+    matchDiodeTerminals?: boolean
     geometryInterchangeableLabels?: Set<string>
   }
 }): SymbolPortAssignment[] {
@@ -24,6 +26,9 @@ export function assignConvertedPortsToSymbolPorts({
   const orderedPorts = [...ports].sort(compareConvertedPorts)
   const assignments: SymbolPortAssignment[] = []
   const convertedCenter = getAveragePoint(ports.map(({ point }) => point))
+  const normalizePortLabel = options.matchDiodeTerminals
+    ? normalizeDiodeTerminalLabel
+    : normalizeFunctionalPortLabel
 
   for (const [portIndex, convertedPort] of orderedPorts.entries()) {
     const rawHints = [
@@ -33,7 +38,7 @@ export function assignConvertedPortsToSymbolPorts({
     ].filter((hint): hint is string => Boolean(hint))
     const functionalHints = new Set(
       rawHints.flatMap((hint) => {
-        const normalized = normalizeFunctionalPortLabel(hint)
+        const normalized = normalizePortLabel(hint)
         return normalized ? [normalized] : []
       }),
     )
@@ -42,7 +47,7 @@ export function assignConvertedPortsToSymbolPorts({
       : [...unusedSymbolPorts]
     const functionalSymbolPort = functionalPortCandidates.find((symbolPort) =>
       symbolPort.labels.some((label) => {
-        const normalized = normalizeFunctionalPortLabel(label)
+        const normalized = normalizePortLabel(label)
         return normalized ? functionalHints.has(normalized) : false
       }),
     )

@@ -82,6 +82,7 @@ export function selectCircuitJsonSymbol({
       symbol,
       options: {
         allowFunctionalPortReuse: classification === "mosfet",
+        matchDiodeTerminals: classification === "diode",
         geometryInterchangeableLabels:
           classification === "crystal" && ports.length === 4
             ? new Set(["2", "4"])

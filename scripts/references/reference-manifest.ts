@@ -49,6 +49,9 @@ export const TI_POWER_REFERENCE_PCB_FILENAMES = {
 } as const
 
 export const TI_EVM_REFERENCE_FILENAMES = {
+  dp83825Evm: {
+    pcb: "ti-dp83825evm.PcbDoc",
+  },
   drv8307Evm: {
     pcb: "ti-drv8307evm.PcbDoc",
     project: "ti-drv8307evm.PrjPcb",
@@ -221,6 +224,21 @@ const tiSchematicHashes: Record<string, string> = {
 }
 
 export const ZIP_BUNDLES: ZipBundleSpec[] = [
+  {
+    archiveSha256:
+      "563481585d9c44e325a46da7891650d70573fa74008de68f80e7fcc9010c388f",
+    nestedArchives: [],
+    outputs: [
+      {
+        archivePath: "HSDC045A.PcbDoc",
+        filename: TI_EVM_REFERENCE_FILENAMES.dp83825Evm.pcb,
+        sha256:
+          "fddf3c35da16904d2c947ed24dbf09bc4e2fead3d42500ef0050055fcb69a138",
+      },
+    ],
+    source: "Texas Instruments DP83825EVM design files SNLR039",
+    url: "https://www.ti.com/lit/zip/SNLR039",
+  },
   {
     archiveSha256:
       "660117e30c1f12473f18d825a8318a5460a13025a7a6223689ac1f9afd3921d8",

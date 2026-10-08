@@ -6,6 +6,7 @@ import { PrefixCircuitJsonIdsStage } from "../stages/PrefixCircuitJsonIdsStage"
 import {
   AddPcbNetsStage,
   ConvertPcbBoardStage,
+  ConvertPcbCadModelsStage,
   ConvertPcbComponentsStage,
   ConvertPcbCopperAreasStage,
   ConvertPcbRecordsStage,
@@ -72,6 +73,7 @@ export class AltiumToCircuitJsonConverter {
       new AddPcbNetsStage(document, this.context),
       new ConvertPcbBoardStage(document, this.context),
       new ConvertPcbComponentsStage(document, this.context),
+      new ConvertPcbCadModelsStage(document, this.context),
       new ConvertPcbCopperAreasStage(document, this.context),
       new ConvertPcbRecordsStage(document, this.context),
     ]
