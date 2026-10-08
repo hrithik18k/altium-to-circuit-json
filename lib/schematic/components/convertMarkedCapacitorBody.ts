@@ -1,9 +1,11 @@
 import {
   type AltiumRecord,
   AltiumSchArcRecord,
+  AltiumSchDesignatorRecord,
   AltiumSchEllipticalArcRecord,
   AltiumSchLabelRecord,
   AltiumSchLineRecord,
+  AltiumSchParameterRecord,
   AltiumSchPolylineRecord,
 } from "altiumts"
 import type { AnyCircuitElement } from "circuit-json"
@@ -50,5 +52,27 @@ export function convertMarkedCapacitorBody(
 
   // Curved plates identify polarized bodies even when the plus is drawn with
   // primitives. Keep the complete source body and its original terminals.
-  return convertOwnedCustomComponentBody({ identity, records }, context)
+  const body = convertOwnedCustomComponentBody({ identity, records }, context)
+  if (!body) return undefined
+  const componentLabelIds = new Set(
+    records.flatMap((record) => {
+      if (
+        !(record instanceof AltiumSchDesignatorRecord) &&
+        !(
+          record instanceof AltiumSchParameterRecord &&
+          ["comment", "value"].includes(record.name?.toLowerCase() ?? "")
+        )
+      ) {
+        return []
+      }
+      const index = context.document.records.indexOf(record)
+      return index >= 0 ? [`schematic_text_altium_${index}`] : []
+    }),
+  )
+  return body.map((element) =>
+    element.type === "schematic_text" &&
+    componentLabelIds.has(element.schematic_text_id)
+      ? { ...element, color: "#0f0f0f" }
+      : element,
+  )
 }

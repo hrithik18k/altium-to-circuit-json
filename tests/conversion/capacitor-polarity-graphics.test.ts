@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import { parseAltiumSchDoc } from "altiumts"
+import type { SchematicComponent, SchematicText } from "circuit-json"
 import { convertAltiumSchDocToCircuitJson } from "../../lib"
 import { readReferenceBytes } from "../helpers/read-reference"
 
@@ -117,4 +118,25 @@ test("preserves the shape-drawn plus and curved plate on SimpleFOC Mini C3", asy
     owned.filter((e) => e.type === "schematic_rect" && e.is_filled),
   ).toHaveLength(2)
   expect(owned.filter((e) => e.type === "schematic_port")).toHaveLength(2)
+})
+
+test("keeps SimpleFOC Shield C6 labels black with its curved source body", async () => {
+  const source = await readReferenceBytes("simplefoc-shield-v3.SchDoc")
+  const elements = convertAltiumSchDocToCircuitJson(parseAltiumSchDoc(source))
+  const component = elements.find(
+    (element): element is SchematicComponent =>
+      element.type === "schematic_component" &&
+      element.source_component_id === "source_component_altium_230",
+  )
+  expect(component).toMatchObject({ is_box_with_pins: false })
+  const labels = elements.filter(
+    (element): element is SchematicText =>
+      element.type === "schematic_text" &&
+      element.schematic_component_id === component?.schematic_component_id &&
+      ["C6", "100uF"].includes(element.text),
+  )
+  expect(labels.map((label) => [label.text, label.color])).toEqual([
+    ["C6", "#0f0f0f"],
+    ["100uF", "#0f0f0f"],
+  ])
 })
