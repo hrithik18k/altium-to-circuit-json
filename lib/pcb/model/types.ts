@@ -7,6 +7,7 @@ import type {
 } from "altiumts"
 import type {
   AnyCircuitElement,
+  PcbBoard,
   SourceNet,
   SourcePort,
   SourceSimpleChip,
@@ -50,6 +51,18 @@ export interface PcbComponentContext {
   getSourcePortId: (record: AltiumPadRecord) => string | undefined
 }
 
+export interface PcbRoutingConstraints {
+  pcbBoard: Pick<
+    PcbBoard,
+    | "allow_blind_and_buried_vias"
+    | "is_via_in_pad_allowed"
+    | "min_trace_width"
+    | "min_via_hole_diameter"
+    | "min_via_pad_diameter"
+  >
+  sourceNetTraceWidthMillimeters?: number
+}
+
 export interface PcbConversionContext {
   componentContext: PcbComponentContext
   document: AltiumPcbDocument
@@ -57,4 +70,5 @@ export interface PcbConversionContext {
   layerMap: PcbCopperLayerMap
   netContext: PcbNetContext
   options: ConvertAltiumPcbDocOptions
+  routingConstraints: PcbRoutingConstraints
 }

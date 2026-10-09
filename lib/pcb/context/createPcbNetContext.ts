@@ -2,10 +2,15 @@ import { AltiumPadRecord, type AltiumPcbDocument } from "altiumts"
 import type { SourceNet, SourceTrace } from "circuit-json"
 import type { PcbComponentContext, PcbNetContext } from "../model"
 
-export function createPcbNetContext(
-  document: AltiumPcbDocument,
-  componentContext: PcbComponentContext,
-): PcbNetContext {
+export function createPcbNetContext({
+  componentContext,
+  document,
+  sourceNetTraceWidthMillimeters,
+}: {
+  componentContext: PcbComponentContext
+  document: AltiumPcbDocument
+  sourceNetTraceWidthMillimeters?: number
+}): PcbNetContext {
   const getNetForRecord = (
     record: Parameters<typeof document.getNetForRecord>[0],
   ) => {
@@ -48,6 +53,7 @@ export function createPcbNetContext(
         source_net_id: sourceNetId,
         name,
         member_source_group_ids: [],
+        trace_width: sourceNetTraceWidthMillimeters,
       } satisfies SourceNet,
       {
         type: "source_trace",

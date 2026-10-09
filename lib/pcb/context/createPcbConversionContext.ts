@@ -1,6 +1,7 @@
 import type { AltiumPcbDocument } from "altiumts"
 import { PcbCopperLayerMap } from "../layers"
 import type { ConvertAltiumPcbDocOptions, PcbConversionContext } from "../model"
+import { getPcbRoutingConstraints } from "../routing/getPcbRoutingConstraints"
 import { createPcbComponentContext } from "./createPcbComponentContext"
 import { createPcbNetContext } from "./createPcbNetContext"
 
@@ -17,12 +18,19 @@ export function createPcbConversionContext({
     includePorts: options.includePads !== false,
     layerMap,
   })
+  const routingConstraints = getPcbRoutingConstraints({ document, layerMap })
   return {
     componentContext,
     document,
     elements: [],
     layerMap,
-    netContext: createPcbNetContext(document, componentContext),
+    netContext: createPcbNetContext({
+      componentContext,
+      document,
+      sourceNetTraceWidthMillimeters:
+        routingConstraints.sourceNetTraceWidthMillimeters,
+    }),
     options,
+    routingConstraints,
   }
 }

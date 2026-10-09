@@ -100,7 +100,11 @@ test("preserves custom TI logic-gate bodies instead of generic boxes", async () 
       element.schematic_text_id.startsWith(
         "schematic_pin_designator_altium_",
       ) &&
-      /^[1-5]$/.test(element.text),
+      /^[1-5]$/.test(element.text) &&
+      gateComponents.some(
+        (component) =>
+          component.schematic_component_id === element.schematic_component_id,
+      ),
   )
   expect(numericPinDesignators).toHaveLength(10)
   expect(
@@ -114,7 +118,20 @@ test("preserves custom TI logic-gate bodies instead of generic boxes", async () 
     ),
   ).toBe(true)
 
-  const schematicSvg = convertCircuitJsonToSchematicSvg(circuitJson)
+  const schematicSvg = convertCircuitJsonToSchematicSvg(
+    circuitJson.filter(
+      (element) =>
+        element.type === "schematic_sheet" ||
+        (element.type === "source_component" &&
+          gateSourceIds.has(element.source_component_id)) ||
+        ("schematic_component_id" in element &&
+          gateComponents.some(
+            (component) =>
+              component.schematic_component_id ===
+              element.schematic_component_id,
+          )),
+    ),
+  )
   for (const pin of ["1", "2", "3", "4", "5"]) {
     const renderedPinLabels = schematicSvg.match(
       new RegExp(

@@ -2,16 +2,18 @@ import { type AltiumPcbDocument, getAltiumBounds } from "altiumts"
 import type { PcbBoard } from "circuit-json"
 import { milsToMillimeters, toMillimeterPoint } from "../geometry"
 import type { PcbCopperLayerMap } from "../layers"
-import { BOARD_ID } from "../model"
+import { BOARD_ID, type PcbRoutingConstraints } from "../model"
 import { getFallbackPcbBounds } from "./getFallbackPcbBounds"
 import { getPreferredPcbBoardOutline } from "./getPreferredPcbBoardOutline"
 
 export function createBoard({
   document,
   layerMap,
+  routingConstraints,
 }: {
   document: AltiumPcbDocument
   layerMap: PcbCopperLayerMap
+  routingConstraints: PcbRoutingConstraints
 }): PcbBoard {
   const altiumOutline = getPreferredPcbBoardOutline(document)
   const outline = altiumOutline.map(toMillimeterPoint)
@@ -33,5 +35,6 @@ export function createBoard({
     thickness: 1.6,
     num_layers: layerMap.layers.length,
     material: "fr4",
+    ...routingConstraints.pcbBoard,
   }
 }

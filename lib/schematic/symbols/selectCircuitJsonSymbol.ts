@@ -60,8 +60,10 @@ export function selectCircuitJsonSymbol({
   if (classification === "diode") {
     // The native catalog cannot represent every protection-diode body.
     if (isProtectionDiode({ libraryReference, description })) return undefined
-    const lower = libraryReference.toLowerCase()
-    baseName = lower.includes("schottky") ? "schottky_diode" : "diode"
+    const isSchottky = [libraryReference, description].some((value) =>
+      value?.toLowerCase().includes("schottky"),
+    )
+    baseName = isSchottky ? "schottky_diode" : "diode"
   }
   if (baseName) {
     candidateNames = CARDINAL_DIRECTIONS.map(
