@@ -3,6 +3,7 @@ import type { ConvertedPort } from "../model"
 import { selectCircuitJsonSymbol } from "../symbols"
 import { convertMarkedCapacitorBody } from "./convertMarkedCapacitorBody"
 import { convertOwnedComponentBody } from "./convertOwnedComponentBody"
+import { convertOwnedCustomComponentBody } from "./convertOwnedCustomComponentBody"
 import { convertOwnedSingleInputGateBody } from "./convertOwnedSingleInputGateBody"
 import { convertRotatedResistorBody } from "./convertRotatedResistorBody"
 import type { ComponentConversionContext, ComponentIdentity } from "./types"
@@ -27,6 +28,12 @@ export function selectComponentBody(
     ...identity,
     ports: componentPorts,
   })
+  // Native LEDs have a fixed emission-arrow layout. Keep complete source
+  // geometry so mirrored arrows and cathode placement survive together.
+  const ledBody = symbolSelection?.name.startsWith("led_")
+    ? convertOwnedCustomComponentBody({ identity, records }, context)
+    : undefined
+  if (ledBody) symbolSelection = undefined
   const polarizedCapacitorBody = convertMarkedCapacitorBody(
     { identity, records, symbolSelection },
     context,
@@ -44,6 +51,7 @@ export function selectComponentBody(
         context,
       )
   const ownedComponentBody =
+    ledBody ??
     polarizedCapacitorBody ??
     rotatedResistorBody ??
     singleInputGateBody ??

@@ -54,12 +54,7 @@ test("Arduino LEDs follow anode and cathode positions despite reversed pin numbe
     schematicUnitScale: 0.05,
   })
 
-  for (const [name, symbolName] of [
-    ["D1", "led_down"],
-    ["D2", "led_down"],
-    ["D3", "led_down"],
-    ["D4", "led_down"],
-  ]) {
+  for (const name of ["D1", "D2", "D3", "D4"]) {
     const sourceComponent = elements.find(
       (element): element is SourceComponent =>
         element.type === "source_component" && element.name === name,
@@ -69,7 +64,15 @@ test("Arduino LEDs follow anode and cathode positions despite reversed pin numbe
         element.type === "schematic_component" &&
         element.source_component_id === sourceComponent?.source_component_id,
     )
-    expect(component?.symbol_name).toBe(symbolName)
+    expect(component?.symbol_name).toBeUndefined()
+    expect(component?.is_box_with_pins).toBe(false)
+    expect(
+      elements.filter(
+        (element) =>
+          element.type === "schematic_path" &&
+          element.schematic_component_id === component?.schematic_component_id,
+      ).length,
+    ).toBeGreaterThanOrEqual(3)
 
     const sourcePorts = elements.filter(
       (element): element is SourcePort =>
