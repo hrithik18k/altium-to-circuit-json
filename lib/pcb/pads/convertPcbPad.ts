@@ -38,6 +38,13 @@ export function convertPcbPad({
   const holeDiameter = milsToMillimeters(geometry.holeSizeMils)
   const shape = normalizeShape(geometry.shape)
   const id = `altium_${recordIndex}`
+  const soldermaskMargin =
+    record.solderMaskExpansionMils === undefined
+      ? undefined
+      : milsToMillimeters(record.solderMaskExpansionMils)
+  const isCoveredWithSolderMask =
+    soldermaskMargin !== undefined &&
+    (width + 2 * soldermaskMargin <= 0 || height + 2 * soldermaskMargin <= 0)
 
   if (!geometry.plated && holeDiameter > 0) {
     if (isSlottedThroughHolePad({ geometry, record })) {
@@ -95,10 +102,9 @@ export function convertPcbPad({
     x,
     y,
     layer,
-    soldermask_margin:
-      record.solderMaskExpansionMils === undefined
-        ? undefined
-        : milsToMillimeters(record.solderMaskExpansionMils),
+    ...(isCoveredWithSolderMask
+      ? { is_covered_with_solder_mask: true }
+      : { soldermask_margin: soldermaskMargin }),
   }
 
   if (shape.includes("OCTAGON")) {

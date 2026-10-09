@@ -76,7 +76,7 @@ test.each([0, 1, 2, 3])(
       expect(enableLabels[0]?.text_parts).toEqual(
         textParts ? [...textParts] : undefined,
       )
-      expect(enableLabels[0]?.rotation).toBe(turns % 2 === 0 ? 0 : 90)
+      expect(enableLabels[0]?.rotation).toBe(turns % 2 === 0 ? 0 : -90)
       expect(
         labels.find(
           (element) =>

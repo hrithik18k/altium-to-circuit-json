@@ -1,15 +1,9 @@
 import { type AltiumSchComponentRecord, AltiumSchPinRecord } from "altiumts"
 import type { SchematicComponent } from "circuit-json"
 import { getBoundsCenter, scalePoint } from "../geometry"
-import {
-  applyNativeSymbolPortGeometry,
-  selectCircuitJsonSymbol,
-} from "../symbols"
+import { applyNativeSymbolPortGeometry } from "../symbols"
 import { addComponentFallbackText } from "./addComponentFallbackText"
 import { convertComponentPin } from "./convertComponentPin"
-import { convertMarkedCapacitorBody } from "./convertMarkedCapacitorBody"
-import { convertOwnedComponentBody } from "./convertOwnedComponentBody"
-import { convertOwnedSingleInputGateBody } from "./convertOwnedSingleInputGateBody"
 import { convertPinlessComponent } from "./convertPinlessComponent"
 import { createComponentPinEdgeElements } from "./createComponentPinEdgeElements"
 import { createSourceComponent } from "./createSourceComponent"
@@ -19,6 +13,7 @@ import { getComponentSize } from "./getComponentSize"
 import { getVisibleSymbolLabels } from "./getVisibleSymbolLabels"
 import { isOwnedRecordVisible } from "./isOwnedRecordVisible"
 import { isPinHidden } from "./isPinHidden"
+import { selectComponentBody } from "./selectComponentBody"
 import type { ComponentConversionContext } from "./types"
 export function convertComponent(
   {
@@ -80,30 +75,17 @@ export function convertComponent(
     visibleOwnedRecords,
     componentPorts.map(({ point }) => point),
   )
-  let symbolSelection = selectCircuitJsonSymbol({
-    ...identity,
-    ports: componentPorts,
-  })
-  const polarizedCapacitorBody = convertMarkedCapacitorBody(
-    { identity, records: visibleOwnedRecords, symbolSelection },
-    context,
-  )
-  if (polarizedCapacitorBody) symbolSelection = undefined
-  const singleInputGateBody = symbolSelection
-    ? undefined
-    : convertOwnedSingleInputGateBody(
-        { identity, records: visibleOwnedRecords, componentPorts },
-        context,
-      )
-  const ownedComponentBody =
-    polarizedCapacitorBody ??
-    singleInputGateBody ??
-    (symbolSelection
-      ? undefined
-      : convertOwnedComponentBody(
-          { identity, pins, records: visibleOwnedRecords, visibleSymbolLabels },
-          context,
-        ))
+  const { symbolSelection, ownedComponentBody, singleInputGateBody } =
+    selectComponentBody(
+      {
+        identity,
+        pins,
+        records: visibleOwnedRecords,
+        componentPorts,
+        visibleSymbolLabels,
+      },
+      context,
+    )
   const center = scalePoint(getBoundsCenter(bodyBounds), options.scale)
   const size = getComponentSize({
     bodyBounds,

@@ -35,12 +35,10 @@ export function convertOwnedCustomComponentBody(
         return ["arc"]
       }
       if (record instanceof AltiumSchLineRecord) return ["line"]
-      if (
-        record instanceof AltiumSchPolygonRecord ||
-        record instanceof AltiumSchPolylineRecord
-      ) {
-        return ["polygon"]
-      }
+      // A closed polygon and open polylines can form a complete body (for
+      // example, a shunt reference's triangle, cathode bar, and reference lead).
+      if (record instanceof AltiumSchPolygonRecord) return ["polygon"]
+      if (record instanceof AltiumSchPolylineRecord) return ["polyline"]
       return []
     }),
   )
@@ -53,6 +51,11 @@ export function convertOwnedCustomComponentBody(
       record instanceof AltiumSchPolygonRecord ||
       record instanceof AltiumSchPolylineRecord,
   ).length
+  const hasFilledPolygon = records.some(
+    (record) =>
+      record instanceof AltiumSchPolygonRecord &&
+      record.getBoolean("ISSOLID") === true,
+  )
   const hasCircularShape = records.some(
     (record) =>
       record instanceof AltiumSchEllipseRecord ||
@@ -73,12 +76,20 @@ export function convertOwnedCustomComponentBody(
   // mounting hole. Do not mistake a circle decorating a rectangular IC for
   // its body. Keep the existing evidence threshold for other custom graphics.
   const hasSimpleCircularBody = hasCircularShape && !hasOtherBodyShape
+  // DIP-switch actuators can be drawn entirely from rectangles. Preserve the
+  // enclosure and internal rectangles instead of replacing them with a box.
+  const hasSwitchBody =
+    /^SW\d/iu.test(identity.designator) &&
+    records.filter((record) => record instanceof AltiumSchRectangleRecord)
+      .length > 1
   // A lone line or shape can be a decoration on an otherwise rectangular IC.
-  // Multiple primitive kinds are strong evidence that the primitives form the
-  // component body itself, even when it does not use every supported family.
+  // Multiple primitive kinds or a filled polygon with supporting strokes are
+  // evidence of a complete body rather than a lone decoration.
   if (
     !hasSimpleCircularBody &&
-    (bodyPrimitiveCount < 3 || bodyPrimitiveKinds.size < 2)
+    !hasSwitchBody &&
+    (bodyPrimitiveCount < 3 ||
+      (bodyPrimitiveKinds.size < 2 && !hasFilledPolygon))
   ) {
     return undefined
   }

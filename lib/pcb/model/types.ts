@@ -1,4 +1,5 @@
 import type {
+  AltiumEmbeddedModel,
   AltiumPadRecord,
   AltiumPcbDocument,
   AltiumPrjPcb,
@@ -13,9 +14,14 @@ import type {
 } from "circuit-json"
 import type { PcbCopperLayerMap } from "../layers"
 
+export interface EmbeddedModelUrlContext {
+  embeddedModel: AltiumEmbeddedModel
+}
+
 export interface ConvertAltiumPcbDocOptions {
   idPrefix?: string
   includeBoardOutline?: boolean
+  includeCadModels?: boolean
   includeComponents?: boolean
   includeCopperAreas?: boolean
   includeCourtyards?: boolean
@@ -25,6 +31,9 @@ export interface ConvertAltiumPcbDocOptions {
   includeSilkscreen?: boolean
   includeTraces?: boolean
   includeVias?: boolean
+  resolveEmbeddedModelUrl?: (
+    context: EmbeddedModelUrlContext,
+  ) => string | undefined
   project?: AltiumPrjPcb
 }
 

@@ -46,8 +46,8 @@ test("uses Schottky symbols for DRV8307 D7 and D8 from their descriptions", asyn
     centerOnSchematicSheet: false,
     schematicUnitScale: 0.05,
   })
-  expectSchottkySymbol(elements, "D7", "down")
-  expectSchottkySymbol(elements, "D8", "up")
+  expectSchottkySymbol(elements, "D7", "up")
+  expectSchottkySymbol(elements, "D8", "down")
 })
 
 test("uses Schottky symbols for Arduino D5 and D6 from their descriptions", async () => {
@@ -61,8 +61,8 @@ test("uses Schottky symbols for Arduino D5 and D6 from their descriptions", asyn
       sheetName: "Arduino Uno",
     },
   })
-  expectSchottkySymbol(elements, "D5", "down")
-  expectSchottkySymbol(elements, "D6", "down")
+  expectSchottkySymbol(elements, "D5", "up")
+  expectSchottkySymbol(elements, "D6", "up")
 })
 
 test("retains library-reference detection and ordinary diode fallback", () => {

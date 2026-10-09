@@ -29,7 +29,9 @@ export function createDirectText({
     text,
     font_size: scaleLength(fontSize, scale),
     position: scalePoint(location, scale),
-    rotation: ccwRotationDegrees,
+    // Schematic text rotates in SVG screen coordinates, whose Y axis points
+    // down. Convert Altium's counterclockwise angle to that convention.
+    rotation: ccwRotationDegrees === 0 ? 0 : -ccwRotationDegrees,
     anchor,
     color,
   }
