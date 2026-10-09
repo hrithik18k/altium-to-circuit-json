@@ -7,6 +7,7 @@ import type {
   SchematicPort,
 } from "circuit-json"
 import { convertAltiumSchDocToCircuitJson } from "../../lib"
+import { hasCompleteLedBody } from "../../lib/schematic/components/hasCompleteLedBody"
 import { readReferenceBytes } from "../helpers/read-reference"
 
 test.each([true, false])(
@@ -56,6 +57,39 @@ test.each([true, false])(
           e.schematic_component_id === component?.schematic_component_id,
       )
       expect(paths).toHaveLength(3)
+      const body = elements.filter(
+        (element) =>
+          "schematic_component_id" in element &&
+          element.schematic_component_id === component?.schematic_component_id,
+      )
+      expect(hasCompleteLedBody(body)).toBe(true)
+      expect(
+        hasCompleteLedBody(
+          body.filter(
+            (element) =>
+              element.type !== "schematic_path" || !element.is_filled,
+          ),
+        ),
+      ).toBe(false)
+      expect(
+        hasCompleteLedBody(
+          body.filter(
+            (element) =>
+              element.type !== "schematic_line" &&
+              (element.type !== "schematic_path" || element.is_filled),
+          ),
+        ),
+      ).toBe(false)
+      expect(
+        hasCompleteLedBody(
+          body.filter(
+            (element) =>
+              element.type !== "schematic_path" ||
+              !element.is_filled ||
+              element.points.some((point) => point.x === axis),
+          ),
+        ),
+      ).toBe(false)
       for (const tip of tips) {
         const arrow = paths.find((path) =>
           path.points.some((point) => point.x === tip.x && point.y === tip.y),

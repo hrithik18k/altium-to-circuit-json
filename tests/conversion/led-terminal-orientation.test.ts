@@ -108,6 +108,7 @@ test("Arduino LEDs follow anode and cathode positions despite reversed pin numbe
 }, 120_000)
 
 test.each([
+  "|RECORD=7|OwnerIndex=1|OwnerPartId=1|IsSolid=T|LocationCount=3|X1=45|Y1=45|X2=55|Y2=50|X3=45|Y3=55\n|RECORD=6|OwnerIndex=1|OwnerPartId=1|LocationCount=2|X1=50|Y1=60|X2=55|Y2=65\n|RECORD=6|OwnerIndex=1|OwnerPartId=1|LocationCount=3|X1=50|Y1=65|X2=55|Y2=70|X3=52|Y3=70",
   "",
   "|RECORD=6|OwnerIndex=1|OwnerPartId=1|LocationCount=2|X1=45|Y1=45|X2=55|Y2=55",
   "|RECORD=7|OwnerIndex=1|OwnerPartId=1|IsSolid=T|LocationCount=3|X1=45|Y1=45|X2=55|Y2=50|X3=45|Y3=55",
