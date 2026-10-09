@@ -82,7 +82,13 @@ export function selectCircuitJsonSymbol({
       symbol,
       options: {
         allowFunctionalPortReuse: classification === "mosfet",
-        matchDiodeTerminals: classification === "diode",
+        matchDiodeTerminals:
+          classification === "diode" || classification === "led",
+        // LED catalog ports use 1 for the anode and 2 for the cathode.
+        symbolPortLabelAliases:
+          classification === "led"
+            ? { "1": "anode", "2": "cathode" }
+            : undefined,
         geometryInterchangeableLabels:
           classification === "crystal" && ports.length === 4
             ? new Set(["2", "4"])
