@@ -50,7 +50,7 @@
     "@tscircuit/math-utils": "^0.0.9",
     "altiumts": "github:tscircuit/altiumts#8db22cf449c7bf6584a968b4913be4e1bd4a93ad",
     "circuit-json": "0.0.486",
-    "format-si-unit": "^0.0.11",
+    "format-si-unit": "github:hrithik18k/format-si-unit#df418c7",
     "polygon-clipping": "^0.15.7",
     "schematic-symbols": "^0.0.238",
     "transformation-matrix": "^2.16.1"
