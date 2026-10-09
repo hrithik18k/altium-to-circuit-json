@@ -11,6 +11,7 @@ import {
 } from "altiumts"
 import type { AnyCircuitElement } from "circuit-json"
 import { getRoundedRectangleCircle } from "../geometry/getRoundedRectangleCircle"
+import { isProtectionDiode } from "../symbols/isProtectionDiode"
 import { convertOwnedComponentRecords } from "./convertOwnedComponentRecords"
 import { prepareOwnedComponentBodyElements } from "./prepareOwnedComponentBodyElements"
 import type { ComponentConversionContext, ComponentIdentity } from "./types"
@@ -85,7 +86,14 @@ export function convertOwnedCustomComponentBody(
   // A lone line or shape can be a decoration on an otherwise rectangular IC.
   // Multiple primitive kinds or a filled polygon with supporting strokes are
   // evidence of a complete body rather than a lone decoration.
+  // A named protection diode can consist of just its filled triangle and
+  // bent cathode polyline; keep requiring supporting geometry.
   if (
+    !(
+      isProtectionDiode(identity) &&
+      hasFilledPolygon &&
+      bodyPrimitiveCount >= 2
+    ) &&
     !hasSimpleCircularBody &&
     !hasSwitchBody &&
     (bodyPrimitiveCount < 3 ||

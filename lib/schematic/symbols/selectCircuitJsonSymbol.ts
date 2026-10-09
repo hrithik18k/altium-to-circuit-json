@@ -6,6 +6,7 @@ import { getMosfetVariant } from "./getMosfetVariant"
 import { getSymbolDirectionScore } from "./getSymbolDirectionScore"
 import { hasCompleteMosfetFunctionalGroups } from "./hasCompleteMosfetFunctionalGroups"
 import { isPolarizedCapacitor } from "./isPolarizedCapacitor"
+import { isProtectionDiode } from "./isProtectionDiode"
 
 export function selectCircuitJsonSymbol({
   description,
@@ -57,6 +58,8 @@ export function selectCircuitJsonSymbol({
     baseName = "led"
   }
   if (classification === "diode") {
+    // The native catalog cannot represent every protection-diode body.
+    if (isProtectionDiode({ libraryReference, description })) return undefined
     const lower = libraryReference.toLowerCase()
     baseName = lower.includes("schottky") ? "schottky_diode" : "diode"
   }
