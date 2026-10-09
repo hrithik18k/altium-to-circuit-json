@@ -48,7 +48,7 @@ export function renderTextFrameRecord({
   const frameWidth = rectangle.maxX - rectangle.minX
   const frameHeight = rectangle.maxY - rectangle.minY
   const availableWidth = Math.max(frameWidth - margin * 2, fontSize)
-  const availableHeight = Math.max(frameHeight - margin * 2, fontSize)
+  const availableHeight = Math.max(frameHeight - margin * 2, 0)
   const layout = layoutSchematicTextFrame({
     text,
     maximumWidth: availableWidth,
@@ -58,13 +58,13 @@ export function renderTextFrameRecord({
     wordWrap: record.getBoolean("WORDWRAP") !== false,
   })
   const lineHeight = layout.fontSize
+  const clipToRect = record.getBoolean("CLIPTORECT") !== false
   const visibleLines =
-    record.getBoolean("CLIPTORECT") === false
-      ? layout.lines
-      : layout.lines.slice(
-          0,
-          Math.max(Math.ceil(availableHeight / lineHeight), 1),
-        )
+    clipToRect && availableHeight <= 0
+      ? []
+      : clipToRect
+        ? layout.lines.slice(0, Math.ceil(availableHeight / lineHeight))
+        : layout.lines
   const alignment = Number(record.getCaseInsensitive("ALIGNMENT") ?? 1)
   const horizontalAnchor =
     alignment === 2 ? "center" : alignment === 3 ? "right" : "left"
@@ -92,10 +92,12 @@ export function renderTextFrameRecord({
         x: textX,
         y: rectangle.maxY - margin - lineIndex * lineHeight,
       },
-      fontSize:
+      fontSize: Math.min(
+        clipToRect ? availableHeight - lineIndex * lineHeight : layout.fontSize,
         lineWidth > availableWidth
           ? (layout.fontSize * availableWidth) / lineWidth
           : layout.fontSize,
+      ),
       color: textColor,
       scale,
       ccwRotationDegrees: 0,

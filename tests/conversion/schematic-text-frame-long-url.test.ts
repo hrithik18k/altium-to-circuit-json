@@ -59,6 +59,58 @@ test("does not split ordinary text in a narrow frame", () => {
   ).toEqual({ lines: ["Text"], fontSize: 10 })
 })
 
+test("keeps every character of a long URL in a clipped one-line frame", () => {
+  const url = `https://example.com/${"a".repeat(234)}`
+  expect(url).toHaveLength(254)
+  const elements = convertAltiumSchDocToCircuitJson(
+    parseAltiumSchDoc(
+      [
+        "|RECORD=31|SIZE1=14|FONTNAME1=Arial",
+        `|RECORD=28|LOCATION.X=0|LOCATION.Y=0|CORNER.X=80|CORNER.Y=10|FONTID=1|WORDWRAP=T|CLIPTORECT=T|TEXT=${url}`,
+      ].join("\n"),
+    ),
+    { centerOnSchematicSheet: false, schematicUnitScale: 1 },
+  )
+  const lines = elements.filter(
+    (element): element is SchematicText =>
+      element.type === "schematic_text" &&
+      element.schematic_text_id.startsWith("schematic_text_frame_line_"),
+  )
+  expect(lines.map((line) => line.text).join("")).toBe(url)
+  expect(lines[0]?.font_size).toBeLessThan(14 * 0.7)
+  expect(
+    lines.reduce((height, line) => height + line.font_size, 0),
+  ).toBeLessThanOrEqual(10)
+  for (const line of lines) {
+    expect(
+      estimateSchematicTextWidth({
+        text: line.text,
+        fontSize: line.font_size,
+        fontFamily: "Arial",
+      }),
+    ).toBeLessThanOrEqual(80)
+  }
+})
+
+test("does not render a 14-unit line beyond a 10-unit clipped frame", () => {
+  const elements = convertAltiumSchDocToCircuitJson(
+    parseAltiumSchDoc(
+      [
+        "|RECORD=31|SIZE1=14|FONTNAME1=Arial",
+        "|RECORD=28|LOCATION.X=0|LOCATION.Y=0|CORNER.X=100|CORNER.Y=10|FONTID=1|WORDWRAP=F|CLIPTORECT=T|TEXT=first~1second",
+      ].join("\n"),
+    ),
+    { centerOnSchematicSheet: false, schematicUnitScale: 1 },
+  )
+  const lines = elements.filter(
+    (element): element is SchematicText =>
+      element.type === "schematic_text" &&
+      element.schematic_text_id.startsWith("schematic_text_frame_line_"),
+  )
+  expect(lines.map((line) => line.text)).toEqual(["first"])
+  expect(lines[0]?.font_size).toBeLessThanOrEqual(10)
+})
+
 test("keeps the complete TI sheet 04 final FAQ URL readable within its row", async () => {
   const source = await readReferenceBytes(
     `${TI_TMDS62LEVM_FIXTURE_NAME}/04.SchDoc`,
