@@ -4,6 +4,7 @@ import { getBoundsCenter, scalePoint } from "../geometry"
 import { applyNativeSymbolPortGeometry } from "../symbols"
 import { addComponentFallbackText } from "./addComponentFallbackText"
 import { convertComponentPin } from "./convertComponentPin"
+import { convertNativeBodyWithSourceText } from "./convertNativeBodyWithSourceText"
 import { convertPinlessComponent } from "./convertPinlessComponent"
 import { createComponentPinEdgeElements } from "./createComponentPinEdgeElements"
 import { createSourceComponent } from "./createSourceComponent"
@@ -95,6 +96,17 @@ export function convertComponent(
   if (symbolSelection) {
     applyNativeSymbolPortGeometry({ center, selection: symbolSelection })
   }
+  const nativeBodyWithSourceText = symbolSelection
+    ? convertNativeBodyWithSourceText(
+        {
+          selection: symbolSelection,
+          center,
+          identity,
+          records: visibleOwnedRecords,
+        },
+        context,
+      )
+    : undefined
   const pinEdgeElements = singleInputGateBody
     ? []
     : createComponentPinEdgeElements(
@@ -116,17 +128,20 @@ export function convertComponent(
     ),
     ...pinEdgeElements,
     ...(ownedComponentBody ?? []),
+    ...(nativeBodyWithSourceText ?? []),
   )
   const schematicComponent: SchematicComponent = {
     type: "schematic_component",
     center,
-    is_box_with_pins: !ownedComponentBody,
+    is_box_with_pins: !ownedComponentBody && !nativeBodyWithSourceText,
     schematic_component_id: identity.schematicComponentId,
     schematic_sheet_id: options.schematicSheetId,
     size,
     source_component_id: identity.sourceComponentId,
     symbol_display_value: identity.displayText,
-    ...(symbolSelection ? { symbol_name: symbolSelection.name } : {}),
+    ...(symbolSelection && !nativeBodyWithSourceText
+      ? { symbol_name: symbolSelection.name }
+      : {}),
   }
   elements.push(schematicComponent)
   if (symbolSelection || ownedComponentBody || options.includeText === false)

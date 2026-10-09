@@ -63,7 +63,14 @@ test("LM5155 diodes follow anode and cathode positions despite reversed pin numb
         element.type === "schematic_component" &&
         element.source_component_id === sourceComponent?.source_component_id,
     )
-    expect(component?.symbol_name).toBe(symbolName)
+    expect(component?.symbol_name).toBeUndefined()
+    expect(
+      elements.filter(
+        (element) =>
+          element.type === "schematic_path" &&
+          element.schematic_component_id === component?.schematic_component_id,
+      ),
+    ).toHaveLength(6)
 
     const sourcePorts = elements.filter(
       (element): element is SourcePort =>

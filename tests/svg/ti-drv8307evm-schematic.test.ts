@@ -27,9 +27,16 @@ test(
             sourceComponent?.source_component_id,
         )
       expect(sourceComponent?.ftype).toBe("simple_led")
-      expect(["led_left", "led_right", "led_up", "led_down"]).toContain(
-        component?.symbol_name ?? "",
-      )
+      expect(component?.symbol_name).toBeUndefined()
+      expect(component?.is_box_with_pins).toBe(false)
+      expect(
+        circuitJson.filter(
+          (element) =>
+            element.type === "schematic_path" &&
+            element.schematic_component_id ===
+              component?.schematic_component_id,
+        ).length,
+      ).toBeGreaterThan(3)
       expect(
         circuitJson.filter(
           (element) =>

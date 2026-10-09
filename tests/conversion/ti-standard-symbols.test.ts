@@ -209,7 +209,7 @@ test("TI sheet 21 maps two- and four-pin crystals with parsed frequencies", asyn
   expect(component).toMatchObject({
     center: { x: 178, y: 116 },
     size: { height: 1.1, width: 0.5894553499999995 },
-    symbol_name: "crystal_down",
+    is_box_with_pins: false,
   })
   expect(ports).toHaveLength(2)
   expect(ports.map((port) => port.center)).toEqual([
@@ -224,7 +224,7 @@ test("TI sheet 21 maps two- and four-pin crystals with parsed frequencies", asyn
   expect(fourPinComponent).toMatchObject({
     center: { x: 93, y: 119 },
     size: { height: 1.08, width: 1.42 },
-    symbol_name: "crystal_4pin_down",
+    is_box_with_pins: false,
   })
   expect(
     Object.fromEntries(
@@ -264,7 +264,7 @@ test("TI sheet 20 uses a canonical ferrite-bead symbol", async () => {
   expect(component).toMatchObject({
     center: { x: 158.5, y: 126 },
     size: { height: 0.74, width: 0.88 },
-    symbol_name: "ferrite_bead_right",
+    is_box_with_pins: false,
   })
   expect(ports.map((port) => port.center)).toEqual([
     { x: 158.06, y: 125.995 },
