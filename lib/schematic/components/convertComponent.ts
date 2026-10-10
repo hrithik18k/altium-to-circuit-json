@@ -1,6 +1,7 @@
 import { type AltiumSchComponentRecord, AltiumSchPinRecord } from "altiumts"
 import type { SchematicComponent } from "circuit-json"
-import { getBoundsCenter, scalePoint } from "../geometry"
+import { getComponentCenter } from "./getComponentCenter"
+import { addNativePassiveLabels } from "./addNativePassiveLabels"
 import { applyNativeSymbolPortGeometry } from "../symbols"
 import { addComponentFallbackText } from "./addComponentFallbackText"
 import { convertComponentPin } from "./convertComponentPin"
@@ -83,10 +84,16 @@ export function convertComponent(
         records: visibleOwnedRecords,
         componentPorts,
         visibleSymbolLabels,
+        bodyBounds,
       },
       context,
     )
-  const center = scalePoint(getBoundsCenter(bodyBounds), options.scale)
+  const center = getComponentCenter({
+    bodyBounds,
+    ports: componentPorts,
+    scale: options.scale,
+    selection: symbolSelection,
+  })
   const size = getComponentSize({
     bodyBounds,
     scale: options.scale,
@@ -129,6 +136,15 @@ export function convertComponent(
     ...(symbolSelection ? { symbol_name: symbolSelection.name } : {}),
   }
   elements.push(schematicComponent)
+  addNativePassiveLabels(
+    {
+      component: schematicComponent,
+      identity,
+      records: visibleOwnedRecords,
+      selection: symbolSelection,
+    },
+    context,
+  )
   if (symbolSelection || ownedComponentBody || options.includeText === false)
     return
   addComponentFallbackText({

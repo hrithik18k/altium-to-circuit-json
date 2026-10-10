@@ -23,8 +23,13 @@ function ownedByName(elements: AnyCircuitElement[], name: string) {
     component,
     owned: elements.filter(
       (element) =>
-        "schematic_component_id" in element &&
-        element.schematic_component_id === component.schematic_component_id,
+        ("schematic_component_id" in element &&
+          element.schematic_component_id ===
+            component.schematic_component_id) ||
+        (element.type === "schematic_text" &&
+          element.schematic_text_id.startsWith(
+            `${component.schematic_component_id}_label_`,
+          )),
     ),
   }
 }
@@ -70,14 +75,10 @@ test.each([true, false])(
     }
     for (let number = 173; number <= 180; number++) {
       const { component, owned } = ownedByName(elements, `R${number}`)
-      expect(component).not.toHaveProperty("symbol_name")
+      expect(component.symbol_name).toMatch(/^boxresistor_/)
       expect(
-        owned.filter(
-          (element) =>
-            element.type === "schematic_path" &&
-            element.schematic_path_id.startsWith("native_catalog_boxresistor_"),
-        ),
-      ).toHaveLength(3)
+        owned.filter((element) => element.type === "schematic_line"),
+      ).toHaveLength(0)
       const labels = owned.filter(
         (element) => element.type === "schematic_text",
       )
@@ -107,8 +108,8 @@ test.each([true, false])(
           .filter((element) => element.type === "schematic_port")
           .map((port) => port.center),
       ).toEqual([
-        { x: 280 + (number - 173) * 10, y: 1090 },
-        { x: 280 + (number - 173) * 10, y: 1140 },
+        { x: 280 + (number - 173) * 10, y: component.center.y - 0.3 },
+        { x: 280 + (number - 173) * 10, y: component.center.y + 0.3 },
       ])
     }
     if (includeText) {
@@ -158,14 +159,14 @@ function resistor({
 }
 
 test.each([false, true])(
-  "preserves complete rotated resistor bodies drawn with polylines=%s",
+  "keeps native resistor bodies with rotated labels drawn with polylines=%s",
   (polyline) => {
     for (const orientation of [1, 3]) {
       const { component, owned } = ownedByName(
         resistor({ polyline, orientation }),
         "R1",
       )
-      expect(component).not.toHaveProperty("symbol_name")
+      expect(component.symbol_name).toMatch(/^boxresistor_/)
       expect(
         owned.find(
           (element) =>
@@ -176,7 +177,12 @@ test.each([false, true])(
   },
 )
 
-test.each([{ orientation: 0 }, { hidden: true }, { ownerPart: 2 }])(
+test.each([
+  { orientation: 0 },
+  { hidden: true },
+  { ownerPart: 2 },
+  { broken: true },
+])(
   "keeps the native resistor for horizontal, invisible, or incomplete source layout: %p",
   (options) => {
     const { component } = ownedByName(resistor(options), "R1")
@@ -204,3 +210,26 @@ test.each([
     expect(ownedByName(elements, "SW1").component.is_box_with_pins).toBe(true)
   },
 )
+
+test("native resistor bodies fit the dense sheet 23 bank without overlapping", async () => {
+  const elements = convertAltiumSchDocToCircuitJson(
+    parseAltiumSchDoc(
+      await readReferenceBytes("ti-tmds62levm-rev-b/23.SchDoc"),
+    ),
+  )
+  const first = ownedByName(elements, "R173")
+  const second = ownedByName(elements, "R174")
+  const pitch = Math.abs(first.component.center.x - second.component.center.x)
+  const ports = first.owned.filter((e) => e.type === "schematic_port")
+  const symbolScale = Math.abs(ports[0]!.center.y - ports[1]!.center.y) / 0.6
+  // The catalog box is 0.15996 wide and 0.39996 tall before scaling.
+  expect(0.15996 * symbolScale).toBeLessThan(pitch)
+  expect(first.component.symbol_name).toBe("boxresistor_up")
+  const ref = first.owned.find(
+    (e) => e.type === "schematic_text" && e.text === "R173",
+  )
+  if (ref?.type !== "schematic_text") throw new Error("Missing R173 label")
+  expect(ref.position.y).toBeLessThan(
+    first.component.center.y - (0.39996 * symbolScale) / 2,
+  )
+})

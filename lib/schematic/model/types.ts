@@ -36,6 +36,7 @@ export interface SymbolSelection {
   assignments: SymbolPortAssignment[]
   name: string
   symbol: SchSymbol
+  geometryScale?: number
 }
 
 export interface SemanticNet {

@@ -136,12 +136,16 @@ test.each([
           element.type === "schematic_component" &&
           element.source_component_id === source?.source_component_id,
       )
-      expect(component).toMatchObject({ is_box_with_pins: false })
       const paths = elements.filter(
         (element): element is SchematicPath =>
           element.type === "schematic_path" &&
           element.schematic_component_id === component?.schematic_component_id,
       )
+      if (component?.symbol_name?.startsWith("capacitor")) {
+        expect(paths).toHaveLength(0)
+        continue
+      }
+      expect(component).toMatchObject({ is_box_with_pins: false })
       expect(paths.length, name).toBeGreaterThanOrEqual(3)
       expect(
         paths.every((path) => path.stroke_color === "#840000"),

@@ -1,7 +1,7 @@
+import { getNativeSymbolCandidate } from "./getNativeSymbolCandidate"
 import type { ConvertedPort, SymbolSelection } from "../model"
-import { assignConvertedPortsToSymbolPorts } from "./assignConvertedPortsToSymbolPorts"
 import { classifyComponent } from "./classifyComponent"
-import { CARDINAL_DIRECTIONS, SYMBOL_CATALOG, SYMBOL_NAMES } from "./constants"
+import { CARDINAL_DIRECTIONS, SYMBOL_NAMES } from "./constants"
 import { getMosfetVariant } from "./getMosfetVariant"
 import { getSymbolDirectionScore } from "./getSymbolDirectionScore"
 import { hasCompleteMosfetFunctionalGroups } from "./hasCompleteMosfetFunctionalGroups"
@@ -13,11 +13,13 @@ export function selectCircuitJsonSymbol({
   designator,
   libraryReference,
   ports,
+  positiveCapacitorPort,
 }: {
   description?: string
   designator: string
   libraryReference: string
   ports: ConvertedPort[]
+  positiveCapacitorPort?: ConvertedPort | null
 }): SymbolSelection | undefined {
   const classification = classifyComponent({
     description,
@@ -83,9 +85,11 @@ export function selectCircuitJsonSymbol({
   } else if (classification === "resistor") {
     baseName = "boxresistor"
   } else if (classification === "capacitor") {
-    baseName = isPolarizedCapacitor(libraryReference)
-      ? "capacitor_polarized"
-      : "capacitor"
+    if (positiveCapacitorPort === null) return undefined
+    baseName =
+      positiveCapacitorPort || isPolarizedCapacitor(libraryReference)
+        ? "capacitor_polarized"
+        : "capacitor"
   } else if (classification === "ferrite_bead") {
     baseName = "ferrite_bead"
   } else if (classification === "inductor") {
@@ -107,39 +111,13 @@ export function selectCircuitJsonSymbol({
   if (candidateNames.length === 0) return undefined
 
   const selections = candidateNames.flatMap((name) => {
-    const symbol = SYMBOL_CATALOG[name]
-    const supportsEquivalentMosfetPads =
-      classification === "mosfet" && symbol?.ports.length === 3
-    if (
-      !symbol ||
-      (!supportsEquivalentMosfetPads && symbol.ports.length !== ports.length)
-    ) {
-      return []
-    }
-    const assignments = assignConvertedPortsToSymbolPorts({
+    return getNativeSymbolCandidate({
+      name,
+      classification,
       ports,
-      symbol,
-      options: {
-        allowFunctionalPortReuse: classification === "mosfet",
-        matchDiodeTerminals:
-          classification === "diode" ||
-          classification === "led" ||
-          baseName === "capacitor_polarized",
-        symbolPortLabelAliases:
-          classification === "led"
-            ? { "1": "pos", "2": "neg" }
-            : baseName === "potentiometer3"
-              ? { "1": "ccw", "2": "wiper", "3": "cw" }
-              : undefined,
-        geometryInterchangeableLabels:
-          classification === "crystal" && ports.length === 4
-            ? new Set(["2", "4"])
-            : undefined,
-      },
+      positiveCapacitorPort,
+      baseName,
     })
-    return assignments.length === ports.length
-      ? [{ assignments, name, symbol } satisfies SymbolSelection]
-      : []
   })
   return selections.sort(
     (left, right) =>

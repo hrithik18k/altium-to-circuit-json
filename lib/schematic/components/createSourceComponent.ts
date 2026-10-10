@@ -39,7 +39,9 @@ export function createSourceComponent({
   const primaryComponentText = getPrimaryComponentText(displayText)
   const common = {
     type: "source_component" as const,
-    display_name: designator,
+    display_name: ["resistor", "capacitor"].includes(classification)
+      ? ""
+      : designator,
     display_value: displayText || undefined,
     manufacturer_part_number: manufacturerPartNumber,
     name: designator,

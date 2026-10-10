@@ -2,8 +2,9 @@ import type { AltiumRecord, AltiumSchPinRecord } from "altiumts"
 import type { ConvertedPort } from "../model"
 import { selectCircuitJsonSymbol } from "../symbols"
 import { convertCompatibilityComponentBody } from "../compatibility/convertCompatibilityComponentBody"
-import { fitNativeSymbolToSourceLayout } from "../compatibility/fitNativeSymbolToSourceLayout"
-import { getCapacitorPositivePortId } from "../symbols/getCapacitorPositivePortId"
+import { getCapacitorPositivePort } from "./getCapacitorPositivePort"
+import { getNativeResistorScale } from "./getNativeResistorScale"
+import type { Bounds } from "../geometry"
 import { convertOwnedComponentBody } from "./convertOwnedComponentBody"
 import { convertOwnedSingleInputGateBody } from "./convertOwnedSingleInputGateBody"
 import type { ComponentConversionContext, ComponentIdentity } from "./types"
@@ -15,11 +16,13 @@ export function selectComponentBody(
     records,
     componentPorts,
     visibleSymbolLabels,
+    bodyBounds,
   }: {
     identity: ComponentIdentity
     pins: AltiumSchPinRecord[]
     records: AltiumRecord[]
     componentPorts: ConvertedPort[]
+    bodyBounds: Bounds
     visibleSymbolLabels: Set<string>
   },
   context: ComponentConversionContext,
@@ -27,51 +30,19 @@ export function selectComponentBody(
   let symbolSelection = selectCircuitJsonSymbol({
     ...identity,
     ports: componentPorts,
+    positiveCapacitorPort: getCapacitorPositivePort({
+      ports: componentPorts,
+      records,
+      libraryReference: identity.libraryReference,
+    }),
   })
-  if (symbolSelection?.name.startsWith("capacitor_")) {
-    const positiveId = getCapacitorPositivePortId(
-      { ports: componentPorts, records },
-      context,
-    )
-    if (positiveId) {
-      symbolSelection = selectCircuitJsonSymbol({
-        ...identity,
-        libraryReference: "capacitor_polarized",
-        ports: componentPorts.map((port) => ({
-          ...port,
-          sourcePort: {
-            ...port.sourcePort,
-            name: port.sourcePort.source_port_id === positiveId ? "pos" : "neg",
-            port_hints: [
-              port.sourcePort.source_port_id === positiveId ? "pos" : "neg",
-            ],
-          },
-        })),
-      })
-    }
-  }
-  if (
-    symbolSelection &&
-    (symbolSelection.name.startsWith("capacitor_polarized_") ||
-      (symbolSelection.name.startsWith("boxresistor_") &&
-        records.some(
-          (record) =>
-            ["34", "41"].includes(record.recordKind ?? "") &&
-            !record.getBoolean("ISHIDDEN") &&
-            (record.getNumber("ORIENTATION") ?? 0) % 2 !== 0,
-        )))
-  ) {
-    const nativeBody = fitNativeSymbolToSourceLayout(
-      { identity, records, selection: symbolSelection },
-      context,
-    )
-    if (nativeBody)
-      return {
-        symbolSelection: undefined,
-        ownedComponentBody: nativeBody,
-        rendersOwnPins: true,
-      }
-  }
+  if (symbolSelection)
+    symbolSelection.geometryScale = getNativeResistorScale({
+      bodyBounds,
+      scale: context.options.scale,
+      selection: symbolSelection,
+      records,
+    })
   const compatibilityBody = symbolSelection
     ? undefined
     : convertCompatibilityComponentBody(

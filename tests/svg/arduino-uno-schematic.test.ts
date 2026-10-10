@@ -16,7 +16,7 @@ const circuitJson = convertAltiumToCircuitJson(source, {
   schematic: { documentName: filename, sheetName: "Arduino Uno" },
 })
 
-test("preserves C1 and C2 polarity marks, curved plates, and connected terminals", () => {
+test("uses native C1 and C2 polarized symbols with connected terminals", () => {
   for (const name of ["C1", "C2"]) {
     const sourceComponent = circuitJson.find(
       (e) => e.type === "source_component" && e.name === name,
@@ -30,8 +30,7 @@ test("preserves C1 and C2 polarity marks, curved plates, and connected terminals
     )
     if (component?.type !== "schematic_component")
       throw new Error(`Missing ${name} symbol`)
-    expect(component.is_box_with_pins).toBe(false)
-    expect(component.symbol_name).toBeUndefined()
+    expect(component.symbol_name).toBe("capacitor_polarized_down")
     const owned = circuitJson.filter(
       (e) =>
         "schematic_component_id" in e &&
@@ -42,14 +41,7 @@ test("preserves C1 and C2 polarity marks, curved plates, and connected terminals
     ).toHaveLength(0)
     expect(
       owned.filter((e) => e.type === "schematic_path" && e.points.length > 4),
-    ).toHaveLength(1)
-    expect(
-      owned.filter(
-        (e) =>
-          e.type === "schematic_path" &&
-          e.schematic_path_id.startsWith("native_catalog_capacitor_polarized_"),
-      ),
-    ).toHaveLength(6)
+    ).toHaveLength(0)
     const ports = owned.filter((e) => e.type === "schematic_port")
     expect(ports).toHaveLength(2)
     for (const port of ports) {

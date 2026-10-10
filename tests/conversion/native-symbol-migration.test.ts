@@ -1,7 +1,7 @@
+import { SYMBOL_CATALOG } from "../../lib/schematic/symbols/constants"
 import { expect, test } from "bun:test"
 import { parseAltiumSchDoc } from "altiumts"
 import { convertAltiumSchDocToCircuitJson } from "../../lib"
-import { SYMBOL_CATALOG } from "../../lib/schematic/symbols/constants"
 
 function capacitor(artwork: string) {
   return convertAltiumSchDocToCircuitJson(
@@ -23,35 +23,12 @@ test("polarized capacitor artwork comes from the native catalog, independently o
   const elements = capacitor(
     "|RECORD=6|OwnerIndex=1|OwnerPartId=1|LocationCount=3|X1=30|Y1=30|X2=60|Y2=80|X3=80|Y3=50",
   )
-  const paths = elements.filter((e) => e.type === "schematic_path")
-  expect(paths).toHaveLength(6)
-  expect(paths).toEqual(
-    capacitor("").filter((e) => e.type === "schematic_path"),
+  expect(elements.filter((e) => e.type === "schematic_path")).toHaveLength(0)
+  const component = elements.find((e) => e.type === "schematic_component")
+  expect(component).toMatchObject({ symbol_name: "capacitor_polarized_down" })
+  expect(component).toEqual(
+    capacitor("").find((e) => e.type === "schematic_component"),
   )
-  const name = "capacitor_polarized_down"
-  const symbol = SYMBOL_CATALOG[name]!
-  const center = {
-    x: symbol.ports.reduce((sum, p) => sum + p.x, 0) / 2,
-    y: symbol.ports.reduce((sum, p) => sum + p.y, 0) / 2,
-  }
-  const span = Math.hypot(
-    symbol.ports[0]!.x - symbol.ports[1]!.x,
-    symbol.ports[0]!.y - symbol.ports[1]!.y,
-  )
-  for (const path of paths) {
-    expect(path.schematic_path_id.startsWith(`native_catalog_${name}_`)).toBe(
-      true,
-    )
-    const primitive =
-      symbol.primitives[Number(path.schematic_path_id.split("_").at(-1))]!
-    if (primitive.type !== "path") throw new Error("Expected native path")
-    expect(path.points).toEqual(
-      primitive.points.map((p) => ({
-        x: 50 + (p.x - center.x) * (40 / span),
-        y: 50 + (p.y - center.y) * (40 / span),
-      })),
-    )
-  }
   expect(
     elements.filter((e) => e.type === "source_port").map((p) => p.pin_number),
   ).toEqual([2, 1])

@@ -11,7 +11,17 @@ export function getComponentSize({
   scale: number
   symbolSelection: SymbolSelection | undefined
 }): { width: number; height: number } {
-  if (symbolSelection) return { ...symbolSelection.symbol.size }
+  if (symbolSelection)
+    return {
+      width: scaleLength(
+        symbolSelection.symbol.size.width,
+        symbolSelection.geometryScale ?? 1,
+      ),
+      height: scaleLength(
+        symbolSelection.symbol.size.height,
+        symbolSelection.geometryScale ?? 1,
+      ),
+    }
   return {
     height: Math.max(
       scaleLength(bodyBounds.maxY - bodyBounds.minY, scale),
