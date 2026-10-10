@@ -6,6 +6,7 @@ import type { ConvertedPort } from "../model"
 import { renderPin } from "../rendering/renderPin"
 import { altiumColorToCss, getFontSize } from "../text"
 import { createPinClockSymbol } from "./createPinClockSymbol"
+import { normalizeOwnedComponentElementColor } from "./normalizeOwnedComponentElementColor"
 import { parseAltiumPinLabel } from "./parseAltiumPinLabel"
 import type { ComponentConversionContext } from "./types"
 
@@ -104,15 +105,17 @@ export function convertPrimitiveGatePin(
   // the renderer synthesize labels already supplied by owned text records.
   delete port.schematicPort.display_pin_label
   delete port.schematicPort.display_pin_label_text_parts
-  return elements.map((element) =>
-    element.type === "schematic_line" ||
-    element.type === "schematic_circle" ||
-    element.type === "schematic_path" ||
-    element.type === "schematic_text"
-      ? {
-          ...element,
-          schematic_component_id: port.schematicPort.schematic_component_id,
-        }
-      : element,
-  )
+  return elements
+    .map((element) =>
+      element.type === "schematic_line" ||
+      element.type === "schematic_circle" ||
+      element.type === "schematic_path" ||
+      element.type === "schematic_text"
+        ? {
+            ...element,
+            schematic_component_id: port.schematicPort.schematic_component_id,
+          }
+        : element,
+    )
+    .map(normalizeOwnedComponentElementColor)
 }

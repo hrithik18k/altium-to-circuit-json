@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { parseAltiumSchDoc } from "altiumts"
-import { any_circuit_element } from "circuit-json"
+import { any_circuit_element, type SchematicLine } from "circuit-json"
 import {
   applyToPoint,
   compose,
@@ -52,8 +52,8 @@ test.each([
         "|RECORD=31|CUSTOMX=200|CUSTOMY=200",
         "|RECORD=1|LIBREFERENCE=SingleInputGate|CURRENTPARTID=1",
         ...bodyLines,
-        `|RECORD=2|OWNERINDEX=1|OWNERPARTID=1|PINCONGLOMERATE=${48 + ((turns + 2) % 4)}|PINLENGTH=10|LOCATION.X=${input.x}|LOCATION.Y=${input.y}|NAME=A|DESIGNATOR=1`,
-        `|RECORD=2|OWNERINDEX=1|OWNERPARTID=1|PINCONGLOMERATE=${48 + turns}|PINLENGTH=10|LOCATION.X=${output.x}|LOCATION.Y=${output.y}|NAME=Y|DESIGNATOR=2|SYMBOL_OUTEREDGE=${inverted ? 1 : 0}`,
+        `|RECORD=2|OWNERINDEX=1|OWNERPARTID=1|PINCONGLOMERATE=${48 + ((turns + 2) % 4)}|PINLENGTH=10|LOCATION.X=${input.x}|LOCATION.Y=${input.y}|NAME=A|DESIGNATOR=1|COLOR=16711680`,
+        `|RECORD=2|OWNERINDEX=1|OWNERPARTID=1|PINCONGLOMERATE=${48 + turns}|PINLENGTH=10|LOCATION.X=${output.x}|LOCATION.Y=${output.y}|NAME=Y|DESIGNATOR=2|SYMBOL_OUTEREDGE=${inverted ? 1 : 0}|COLOR=16711680`,
         `|RECORD=27|LOCATIONCOUNT=2|X1=${terminal.x}|Y1=${terminal.y}|X2=${wireEnd.x}|Y2=${wireEnd.y}`,
       ].join("\n"),
     )
@@ -81,6 +81,14 @@ test.each([
     const labelPosition = applyToPoint(localToSheet, { x: 29, y: 0 })
     expect(label.position.x).toBeCloseTo(labelPosition.x)
     expect(label.position.y).toBeCloseTo(labelPosition.y)
+    expect(label.color).toBe("#0f0f0f")
+    const pinLines = circuitJson.filter(
+      (element): element is SchematicLine =>
+        element.type === "schematic_line" &&
+        element.schematic_line_id.endsWith("_pin"),
+    )
+    expect(pinLines).toHaveLength(2)
+    expect(pinLines.every((line) => line.color === "#840000")).toBe(true)
     expect(
       circuitJson.find((element) => element.type === "source_trace"),
     ).toMatchObject({ connected_source_port_ids: [port.source_port_id] })
@@ -93,6 +101,11 @@ test.each([
       expect(circles[0]?.center.x).toBeCloseTo(center.x)
       expect(circles[0]?.center.y).toBeCloseTo(center.y)
       expect(circles[0]?.radius).toBe(2.5)
+      expect(circles[0]).toMatchObject({
+        color: "#840000",
+        fill_color: "#ffffff",
+        is_filled: true,
+      })
       const stem = circuitJson.find(
         (element) =>
           element.type === "schematic_line" &&
