@@ -75,7 +75,7 @@ export function convertComponent(
     visibleOwnedRecords,
     componentPorts.map(({ point }) => point),
   )
-  const { symbolSelection, ownedComponentBody, singleInputGateBody } =
+  const { symbolSelection, ownedComponentBody, rendersOwnPins } =
     selectComponentBody(
       {
         identity,
@@ -95,7 +95,7 @@ export function convertComponent(
   if (symbolSelection) {
     applyNativeSymbolPortGeometry({ center, selection: symbolSelection })
   }
-  const pinEdgeElements = singleInputGateBody
+  const pinEdgeElements = rendersOwnPins
     ? []
     : createComponentPinEdgeElements(
         {

@@ -24,7 +24,14 @@ export function normalizeOwnedComponentElementColor(
     case "schematic_line":
       return { ...element, color: outline }
     case "schematic_text":
-      return { ...element, color: "#0f0f0f" }
+      return {
+        ...element,
+        color: element.schematic_text_id.startsWith("schematic_pin_designator_")
+          ? "#a90000"
+          : element.schematic_text_id.startsWith("schematic_pin_name_")
+            ? "#006464"
+            : "#0f0f0f",
+      }
     default:
       return element
   }

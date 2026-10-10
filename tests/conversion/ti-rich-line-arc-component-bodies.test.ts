@@ -43,15 +43,14 @@ test("preserves rich TI transformer, optocoupler, and MOSFET bodies", async () =
 
   for (const name of ["Q2", "Q7"]) {
     const mosfet = findComponent(lm251772, name)
-    expect(mosfet.is_box_with_pins).toBe(false)
-    expect(mosfet.symbol_name).toBeUndefined()
+    expect(mosfet.symbol_name).toMatch(/channel_.*mosfet_transistor_gate_/)
     expect(
       ownedElements({
         circuitJson: lm251772,
         component: mosfet,
         type: "schematic_circle",
-      }).length,
-    ).toBeGreaterThan(0)
+      }),
+    ).toHaveLength(0)
   }
 
   expect(findComponent(lm5155, "U1").is_box_with_pins).toBe(true)

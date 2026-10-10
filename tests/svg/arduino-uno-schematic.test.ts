@@ -39,10 +39,17 @@ test("preserves C1 and C2 polarity marks, curved plates, and connected terminals
     )
     expect(
       owned.filter((e) => e.type === "schematic_text" && e.text === "+"),
-    ).toHaveLength(1)
+    ).toHaveLength(0)
     expect(
       owned.filter((e) => e.type === "schematic_path" && e.points.length > 4),
     ).toHaveLength(1)
+    expect(
+      owned.filter(
+        (e) =>
+          e.type === "schematic_path" &&
+          e.schematic_path_id.startsWith("native_catalog_capacitor_polarized_"),
+      ),
+    ).toHaveLength(6)
     const ports = owned.filter((e) => e.type === "schematic_port")
     expect(ports).toHaveLength(2)
     for (const port of ports) {

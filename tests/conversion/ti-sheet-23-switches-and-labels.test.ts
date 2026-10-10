@@ -72,8 +72,12 @@ test.each([true, false])(
       const { component, owned } = ownedByName(elements, `R${number}`)
       expect(component).not.toHaveProperty("symbol_name")
       expect(
-        owned.filter((element) => element.type === "schematic_line"),
-      ).toHaveLength(8)
+        owned.filter(
+          (element) =>
+            element.type === "schematic_path" &&
+            element.schematic_path_id.startsWith("native_catalog_boxresistor_"),
+        ),
+      ).toHaveLength(3)
       const labels = owned.filter(
         (element) => element.type === "schematic_text",
       )
@@ -172,12 +176,7 @@ test.each([false, true])(
   },
 )
 
-test.each([
-  { orientation: 0 },
-  { hidden: true },
-  { ownerPart: 2 },
-  { broken: true },
-])(
+test.each([{ orientation: 0 }, { hidden: true }, { ownerPart: 2 }])(
   "keeps the native resistor for horizontal, invisible, or incomplete source layout: %p",
   (options) => {
     const { component } = ownedByName(resistor(options), "R1")

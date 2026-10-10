@@ -109,7 +109,7 @@ export function createSourceComponent({
   if (classification === "mosfet" && pinCount >= 3) {
     const parsed = source_simple_mosfet.safeParse({
       ...common,
-      ...getMosfetVariant(libraryReference),
+      ...getMosfetVariant(`${libraryReference}_${description ?? ""}`),
       ftype: "simple_mosfet",
     })
     if (parsed.success) return parsed.data

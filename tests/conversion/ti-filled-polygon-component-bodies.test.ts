@@ -9,7 +9,6 @@ type SchematicComponent = Extract<
   AnyCircuitElement,
   { type: "schematic_component" }
 >
-type SchematicPath = Extract<AnyCircuitElement, { type: "schematic_path" }>
 
 test("preserves filled-polygon custom bodies for LM5155 U3 and D4", async () => {
   const document = parseAltiumSchDoc(
@@ -44,7 +43,7 @@ test("preserves filled-polygon custom bodies for LM5155 U3 and D4", async () => 
   }
 })
 
-test("preserves filled-polygon potentiometers on LMG342X", async () => {
+test("selects native three-terminal potentiometers on LMG342X", async () => {
   const document = parseAltiumSchDoc(
     await readReferenceBytes("ti-lmg342x-bb-evm.SchDoc"),
   )
@@ -63,21 +62,25 @@ test("preserves filled-polygon potentiometers on LMG342X", async () => {
         element.type === "schematic_component" &&
         element.source_component_id === source?.source_component_id,
     )
-    expect(component?.is_box_with_pins, name).toBe(false)
-    const bodyPaths = elements.filter(
-      (element): element is SchematicPath =>
-        element.type === "schematic_path" &&
-        element.schematic_component_id === component?.schematic_component_id,
-    )
-    expect(bodyPaths, name).toHaveLength(3)
+    expect(component?.symbol_name, name).toMatch(/^potentiometer3_/)
     expect(
-      bodyPaths.map((path) => [path.is_filled, path.points.length]),
-      name,
-    ).toEqual([
-      [true, 3], // Filled wiper arrowhead
-      [false, 2], // Wiper stem
-      [false, 10], // Resistor zigzag
-    ])
+      elements.filter(
+        (element) =>
+          element.type === "schematic_path" &&
+          element.schematic_component_id === component?.schematic_component_id,
+      ),
+    ).toHaveLength(0)
+    const ports = elements.filter(
+      (element) =>
+        element.type === "source_port" &&
+        element.source_component_id === source?.source_component_id,
+    )
+    expect(ports).toHaveLength(3)
+    expect(
+      ports.find(
+        (port) => port.type === "source_port" && /wiper/i.test(port.name),
+      ),
+    ).toMatchObject({ pin_number: 2 })
   }
 })
 

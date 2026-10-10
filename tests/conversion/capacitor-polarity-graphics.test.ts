@@ -44,13 +44,13 @@ const plus =
   "|RECORD=4|OwnerIndex=1|OwnerPartId=1|Location.X=52|Location.Y=58|Text=+"
 
 test.each([true, false])(
-  "preserves marked capacitor geometry with includeText=%s",
+  "uses native polarized artwork with includeText=%s",
   (includeText) => {
     const elements = convertCapacitor({ marker: plus, includeText })
     const component = elements.find((e) => e.type === "schematic_component")
     expect(component).toMatchObject({ is_box_with_pins: false })
     expect(component).not.toHaveProperty("symbol_name")
-    expect(elements.filter((e) => e.type === "schematic_path")).toHaveLength(3)
+    expect(elements.filter((e) => e.type === "schematic_path")).toHaveLength(6)
     const ports = elements.filter((e) => e.type === "schematic_port")
     expect(ports.find((p) => p.pin_number === 2)?.center).toEqual({
       x: 50,
@@ -62,7 +62,7 @@ test.each([true, false])(
     })
     expect(
       elements.some((e) => e.type === "schematic_text" && e.text === "+"),
-    ).toBe(includeText)
+    ).toBe(false)
   },
 )
 
@@ -82,11 +82,15 @@ test.each([
   },
 )
 
-test("keeps the native symbol when source body graphics are incomplete", () => {
-  const component = convertCapacitor({ marker: plus, includeBody: false }).find(
-    (e) => e.type === "schematic_component",
-  )
-  expect(component?.symbol_name).toMatch(/^capacitor_(right|left|up|down)$/)
+test("uses native polarized artwork even when source graphics are incomplete", () => {
+  const elements = convertCapacitor({ marker: plus, includeBody: false })
+  const paths = elements.filter((e) => e.type === "schematic_path")
+  expect(paths).toHaveLength(6)
+  expect(
+    paths.every((path) =>
+      path.schematic_path_id.startsWith("native_catalog_capacitor_polarized_"),
+    ),
+  ).toBe(true)
 })
 
 test("preserves a curved capacitor plate even when the plus is not text", () => {
@@ -112,11 +116,11 @@ test("preserves the shape-drawn plus and curved plate on SimpleFOC Mini C3", asy
       "schematic_component_id" in e &&
       e.schematic_component_id === "schematic_component_altium_95",
   )
-  // Two arc segments make the curved plate; the third path is the flat plate.
-  expect(owned.filter((e) => e.type === "schematic_path")).toHaveLength(3)
+  // The native symbol includes leads, both plates, and two plus strokes.
+  expect(owned.filter((e) => e.type === "schematic_path")).toHaveLength(6)
   expect(
     owned.filter((e) => e.type === "schematic_rect" && e.is_filled),
-  ).toHaveLength(2)
+  ).toHaveLength(0)
   expect(owned.filter((e) => e.type === "schematic_port")).toHaveLength(2)
 })
 

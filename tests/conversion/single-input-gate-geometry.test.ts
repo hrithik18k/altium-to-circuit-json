@@ -81,7 +81,7 @@ test.each([
     const labelPosition = applyToPoint(localToSheet, { x: 29, y: 0 })
     expect(label.position.x).toBeCloseTo(labelPosition.x)
     expect(label.position.y).toBeCloseTo(labelPosition.y)
-    expect(label.color).toBe("#0f0f0f")
+    expect(label.color).toBe("#a90000")
     const pinLines = circuitJson.filter(
       (element): element is SchematicLine =>
         element.type === "schematic_line" &&
