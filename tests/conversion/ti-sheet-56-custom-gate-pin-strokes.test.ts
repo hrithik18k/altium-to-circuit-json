@@ -42,20 +42,16 @@ test("matches custom gate pin and body strokes on TI sheet 56", async () => {
         element.schematic_line_id.endsWith("_pin"),
     )
     const bodyLines = circuitJson.filter(
-      (element) =>
-        element.type === "schematic_rect" &&
+      (element): element is SchematicLine =>
+        element.type === "schematic_line" &&
         element.schematic_component_id === gate.schematic_component_id &&
-        element.schematic_rect_id.startsWith("compatibility_frame_"),
+        element.schematic_line_id.endsWith("_line"),
     )
 
     expect(pinLines).toHaveLength(5)
     expect(bodyLines.length).toBeGreaterThan(0)
     expect(new Set(pinLines.map((line) => line.stroke_width))).toEqual(
-      new Set(
-        bodyLines.map((line) =>
-          line.type === "schematic_rect" ? line.stroke_width : undefined,
-        ),
-      ),
+      new Set(bodyLines.map((line) => line.stroke_width)),
     )
   }
 })

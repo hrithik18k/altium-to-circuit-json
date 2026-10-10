@@ -14,7 +14,7 @@ type SourceComponent = Extract<AnyCircuitElement, { type: "source_component" }>
 type SchematicPath = Extract<AnyCircuitElement, { type: "schematic_path" }>
 type SchematicText = Extract<AnyCircuitElement, { type: "schematic_text" }>
 
-test("uses independent IEC logic symbols with original terminals and pin labels", async () => {
+test("preserves custom TI logic-gate bodies instead of generic boxes", async () => {
   const source = await readReferenceBytes(
     `${TI_TMDS62LEVM_FIXTURE_NAME}/13.SchDoc`,
   )
@@ -69,31 +69,30 @@ test("uses independent IEC logic symbols with original terminals and pin labels"
         element.type === "schematic_path" &&
         element.schematic_component_id === component?.schematic_component_id,
     )
-  for (const [name, legend] of [
-    ["U57", "\u22651"],
-    ["U58", "&"],
-  ]) {
-    const component = componentForName(name!)
-    expect(pathsForComponent(component)).toHaveLength(0)
-    const owned = circuitJson.filter(
-      (element) =>
-        "schematic_component_id" in element &&
-        element.schematic_component_id === component?.schematic_component_id,
-    )
-    expect(
-      owned.filter(
-        (element) =>
-          element.type === "schematic_rect" &&
-          element.schematic_rect_id.startsWith("compatibility_frame_"),
+  const u57 = componentForName("U57")
+  const u57Paths = pathsForComponent(u57)
+  expect(u57Paths).toHaveLength(4)
+  expect(
+    u57Paths.every((path) =>
+      path.points.every(
+        (point) =>
+          u57 !== undefined &&
+          point.y >= u57.center.y - u57.size.height / 2 - 0.001 &&
+          point.y <= u57.center.y + u57.size.height / 2 + 0.001,
       ),
-    ).toHaveLength(1)
-    expect(
-      owned.find(
-        (element) =>
-          element.type === "schematic_text" && element.text === legend,
-      ),
-    ).toMatchObject({ color: "#0f0f0f" })
-  }
+    ),
+  ).toBe(true)
+
+  const u58Paths = pathsForComponent(componentForName("U58"))
+  expect(u58Paths).toHaveLength(1)
+  const u58Path = u58Paths[0]!
+  const endpointMaximumX = Math.max(
+    u58Path.points[0]!.x,
+    u58Path.points.at(-1)!.x,
+  )
+  expect(Math.max(...u58Path.points.map((point) => point.x))).toBeGreaterThan(
+    endpointMaximumX + 0.1,
+  )
 
   const numericPinDesignators = circuitJson.filter(
     (element): element is SchematicText =>

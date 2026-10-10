@@ -19,7 +19,6 @@ export function assignConvertedPortsToSymbolPorts({
   options?: {
     allowFunctionalPortReuse?: boolean
     matchDiodeTerminals?: boolean
-    symbolPortLabelAliases?: Record<string, string>
     geometryInterchangeableLabels?: Set<string>
   }
 }): SymbolPortAssignment[] {
@@ -48,9 +47,7 @@ export function assignConvertedPortsToSymbolPorts({
       : [...unusedSymbolPorts]
     const functionalSymbolPort = functionalPortCandidates.find((symbolPort) =>
       symbolPort.labels.some((label) => {
-        const normalized = normalizePortLabel(
-          options.symbolPortLabelAliases?.[label] ?? label,
-        )
+        const normalized = normalizePortLabel(label)
         return normalized ? functionalHints.has(normalized) : false
       }),
     )

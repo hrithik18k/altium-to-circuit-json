@@ -21,13 +21,7 @@ export function classifyComponent({
   ) {
     return "crystal"
   }
-  if (
-    lowerReference.includes("mosfet") ||
-    /\bmosfet\b/i.test(description ?? "") ||
-    (/\b[np][- ]channel\b/i.test(description ?? "") &&
-      !/\bjfet\b/i.test(description ?? ""))
-  )
-    return "mosfet"
+  if (lowerReference.includes("mosfet")) return "mosfet"
   if (
     prefix === "FB" ||
     prefix === "FL" ||

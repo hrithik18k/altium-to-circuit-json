@@ -1,7 +1,6 @@
 import type { AltiumRecord, AltiumSchPinRecord } from "altiumts"
 import type { ConvertedPort } from "../model"
 import { selectCircuitJsonSymbol } from "../symbols"
-import { convertCompatibilityComponentBody } from "../compatibility/convertCompatibilityComponentBody"
 import { getCapacitorPositivePort } from "./getCapacitorPositivePort"
 import { getNativeResistorScale } from "./getNativeResistorScale"
 import type { Bounds } from "../geometry"
@@ -27,7 +26,7 @@ export function selectComponentBody(
   },
   context: ComponentConversionContext,
 ) {
-  let symbolSelection = selectCircuitJsonSymbol({
+  const symbolSelection = selectCircuitJsonSymbol({
     ...identity,
     ports: componentPorts,
     positiveCapacitorPort: getCapacitorPositivePort({
@@ -43,21 +42,13 @@ export function selectComponentBody(
       selection: symbolSelection,
       records,
     })
-  const compatibilityBody = symbolSelection
+  const singleInputGateBody = symbolSelection
     ? undefined
-    : convertCompatibilityComponentBody(
-        { identity, ports: componentPorts, records },
+    : convertOwnedSingleInputGateBody(
+        { identity, records, componentPorts },
         context,
       )
-  const singleInputGateBody =
-    symbolSelection || compatibilityBody
-      ? undefined
-      : convertOwnedSingleInputGateBody(
-          { identity, records, componentPorts },
-          context,
-        )
   const ownedComponentBody =
-    compatibilityBody ??
     singleInputGateBody ??
     (symbolSelection
       ? undefined
@@ -68,6 +59,6 @@ export function selectComponentBody(
   return {
     symbolSelection,
     ownedComponentBody,
-    rendersOwnPins: Boolean(compatibilityBody ?? singleInputGateBody),
+    singleInputGateBody,
   }
 }

@@ -1,3 +1,4 @@
+import { normalizeOwnedComponentElementColor } from "./normalizeOwnedComponentElementColor"
 import { AltiumSchPinRecord } from "altiumts"
 import type { AnyCircuitElement } from "circuit-json"
 import { VECTOR_BY_DIRECTION } from "../connectivity"
@@ -6,7 +7,6 @@ import type { ConvertedPort } from "../model"
 import { renderPin } from "../rendering/renderPin"
 import { altiumColorToCss, getFontSize } from "../text"
 import { createPinClockSymbol } from "./createPinClockSymbol"
-import { normalizeOwnedComponentElementColor } from "./normalizeOwnedComponentElementColor"
 import { parseAltiumPinLabel } from "./parseAltiumPinLabel"
 import type { ComponentConversionContext } from "./types"
 
@@ -106,12 +106,6 @@ export function convertPrimitiveGatePin(
   delete port.schematicPort.display_pin_label
   delete port.schematicPort.display_pin_label_text_parts
   return elements
-    .filter(
-      (element) =>
-        element !== nameLabel ||
-        nameLabel?.type !== "schematic_text" ||
-        nameLabel.text !== port.sourcePort.pin_number?.toString(),
-    )
     .map((element) =>
       element.type === "schematic_line" ||
       element.type === "schematic_circle" ||
