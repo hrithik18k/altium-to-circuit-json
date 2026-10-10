@@ -215,3 +215,29 @@ test("P-channel metadata selects matching native artwork and source electrical t
     elements.find((e) => e.type === "schematic_component")?.symbol_name,
   ).toMatch(/^p_channel_e_mosfet_/)
 })
+
+test("buffer-and-driver metadata must not select an AND gate", () => {
+  const elements = convertAltiumSchDocToCircuitJson(
+    parseAltiumSchDoc(
+      [
+        "|RECORD=31",
+        "|RECORD=1|LibReference=Buffer|ComponentDescription=IC HEX BUFFER AND DRIVER WITH OPEN DRAIN OUTPUT|Designator=U1|CurrentPartId=1|Location.X=50|Location.Y=50",
+        "|RECORD=2|OwnerIndex=1|OwnerPartId=1|Location.X=40|Location.Y=50|Name=1A|Designator=1|PinLength=10|Orientation=2",
+        "|RECORD=2|OwnerIndex=1|OwnerPartId=1|Location.X=60|Location.Y=50|Name=1Y|Designator=2|PinLength=10|Orientation=0",
+      ].join("\n"),
+    ),
+  )
+  expect(
+    elements.some(
+      (e) =>
+        e.type === "schematic_rect" &&
+        e.schematic_rect_id.startsWith("compatibility_frame_"),
+    ),
+  ).toBe(false)
+  expect(
+    elements.some((e) => e.type === "schematic_text" && e.text === "&"),
+  ).toBe(false)
+  expect(
+    elements.filter((e) => e.type === "source_port").map((e) => e.name),
+  ).toEqual(["1A", "1Y"])
+})
